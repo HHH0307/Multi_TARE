@@ -1,0 +1,21 @@
+<launch>
+
+  <arg name="stateEstimation_Topic" default="/integrated_to_init"/>
+  <arg name="registeredScan_Topic" default="/registered_cloud"/>
+  <arg name="flipStateEstimation_" default="true"/>
+  <arg name="flipRegisteredScan_" default="true"/>
+  <arg name="sendTF_" default="true"/>
+  <arg name="reverseTF_" default="false"/>
+  <arg name="robot_name" default="robot_1"/>
+
+  <node pkg="loam_interface" exec="multi_loamInterface" name="loamInterface" output="screen">
+    <param name="stateEstimationTopic" value="/integrated_to_init" />
+    <param name="registeredScanTopic" value="/velodyne_cloud_registered" />
+    <param name="flipStateEstimation" value="true" />
+    <param name="flipRegisteredScan" value="true" />
+    <param name="sendTF" value="true" />
+    <param name="reverseTF" value="false" />
+    <param name="robot_name" value="$(var robot_name)" />
+  </node>
+
+</launch>

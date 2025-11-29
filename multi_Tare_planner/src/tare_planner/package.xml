@@ -1,0 +1,42 @@
+<package format="3">
+  <name>tare_planner</name>
+  <version>0.0.1</version>
+  <description>TARE Exploration Planner for Ground Vehicles</description>
+  <maintainer email="ccao1@andrew.cmu.edu">Chao Cao</maintainer>
+  <license>BSD</license>
+
+  <!-- 构建工具依赖（仅构建工具，如ament_cmake） -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- 编译时依赖（生成消息头文件必须） -->
+  <build_depend>rosidl_default_generators</build_depend>  <!-- 正确位置：编译时依赖 -->
+
+  <!-- 运行时依赖（消息运行时必须） -->
+  <exec_depend>rosidl_default_runtime</exec_depend>  <!-- 正确：运行时依赖 -->
+
+  <!-- 功能依赖（同时用于编译和运行时） -->
+  <depend>rclcpp</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>pcl_ros</depend>
+  <depend>pcl_conversions</depend>
+  <depend>libgoogle-glog-dev</depend>
+
+  <!-- 消息接口包必须的分组 -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <!-- 测试依赖 -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <rosidl_generator plugin="rosidl_generator_cpp"/>  <!-- 正确导出C++生成器 -->
+  </export>
+</package>

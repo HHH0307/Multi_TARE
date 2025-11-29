@@ -1,0 +1,8 @@
+<launch>
+
+  <arg name="robot_name" default="robot_1"/>
+  <node pkg="sensor_scan_generation" exec="multi_sensorScanGeneration" name="sensorScanGeneration" output="screen">
+    <param name="robot_name" value="$(var robot_name)" />
+  </node>
+
+</launch>

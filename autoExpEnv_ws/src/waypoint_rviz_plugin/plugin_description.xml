@@ -1,0 +1,28 @@
+<library path="waypoint_rviz_plugin">
+  <class name="waypoint_rviz_plugin/WaypointTool"
+         type="waypoint_rviz_plugin::WaypointTool"
+         base_class_type="rviz_common::Tool">
+    <description>A tool for sending waypoints</description>
+  </class>
+
+  <!-- 机器人1航点工具 -->
+  <class name="waypoint_rviz_plugin/Robot1WaypointTool"
+         type="waypoint_rviz_plugin::Robot1WaypointTool"
+         base_class_type="rviz_common::Tool">
+    <description>Waypoint tool for Robot 1 (topic: robot1/waypoints)</description>
+  </class>
+
+  <!-- 机器人2航点工具 -->
+  <class name="waypoint_rviz_plugin/Robot2WaypointTool"
+         type="waypoint_rviz_plugin::Robot2WaypointTool"
+         base_class_type="rviz_common::Tool">
+    <description>Waypoint tool for Robot 2 (topic: robot2/waypoints)</description>
+  </class>
+
+  <!-- 机器人3航点工具 -->
+  <class name="waypoint_rviz_plugin/Robot3WaypointTool"
+         type="waypoint_rviz_plugin::Robot3WaypointTool"
+         base_class_type="rviz_common::Tool">
+    <description>Waypoint tool for Robot 3 (topic: robot3/waypoints)</description>
+  </class>
+</library>
