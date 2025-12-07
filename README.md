@@ -38,3 +38,4 @@ cd start_shell
 ```shell
 bash start_multi_indoor_3.sh
 ```
+![仿真截图](./img/Multi_TATE_example.jpg)
