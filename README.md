@@ -10,14 +10,14 @@ cd Multi_TARE
 ```shell
 git checkout humble
 ```
-### 1.1 编译 autoExpEnv_ws 模块
+### 2.1 编译 autoExpEnv_ws 模块
 ```shell
 cd autoExpEnv_ws
 ```
 ```shell
 bash colcon_build_shell.sh
 ```
-### 1.2 编译 multi_Tare_planner 模块
+### 2.2 编译 multi_Tare_planner 模块
 ```shell
 cd ..
 ```
