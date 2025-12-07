@@ -27,3 +27,14 @@ cd multi_Tare_planner
 ```shell
 bash colcon_build_tare.sh
 ```
+## 3 运行仿真程序
+以 **indoor 室内环境 - 3车** 为例
+```shell
+cd ..
+```
+```shell
+cd start_shell
+```
+```shell
+bash start_multi_indoor_3.sh
+```
