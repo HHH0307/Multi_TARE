@@ -1,0 +1,8 @@
+autoExpEnv_ws/build/*
+autoExpEnv_ws/install/*
+autoExpEnv_ws/log/*
+autoExpEnv_ws/src/vehicle_simulator/mesh/*
+
+multi_Tare_planner/build/*
+multi_Tare_planner/install/*
+multi_Tare_planner/log/*
