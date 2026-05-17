@@ -95,7 +95,7 @@ target_link_libraries(viewpoint_manager ${PROJECT_NAME}__rosidl_typesupport_cpp 
 
 add_library(local_coverage_planner src/local_coverage_planner/local_coverage_planner.cpp)
 ament_target_dependencies(local_coverage_planner rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
-target_link_libraries(local_coverage_planner ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} viewpoint_manager)
+target_link_libraries(local_coverage_planner ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} viewpoint_manager planning_env)
 
 add_library(grid_world STATIC src/grid_world/grid_world.cpp)
 ament_target_dependencies(grid_world rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
@@ -103,11 +103,11 @@ target_link_libraries(grid_world ${PROJECT_NAME}__rosidl_typesupport_cpp ${catki
 
 add_library(pointcloud_manager src/pointcloud_manager/pointcloud_manager.cpp)
 ament_target_dependencies(pointcloud_manager rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
-target_link_libraries(pointcloud_manager ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES})
+target_link_libraries(pointcloud_manager ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} misc_utils pointcloud_utils)
 
 add_library(keypose_graph STATIC src/keypose_graph/keypose_graph.cpp)
 ament_target_dependencies(keypose_graph rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
-target_link_libraries(keypose_graph ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} viewpoint_manager)
+target_link_libraries(keypose_graph ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} viewpoint_manager planning_env)
 
 # 新增
 add_library(merger_graph STATIC src/merger_graph/merger_graph.cpp)
@@ -116,11 +116,11 @@ target_link_libraries(merger_graph ${PROJECT_NAME}__rosidl_typesupport_cpp ${cat
 
 add_library(rolling_occupancy_grid src/rolling_occupancy_grid/rolling_occupancy_grid.cpp)
 ament_target_dependencies(rolling_occupancy_grid rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
-target_link_libraries(rolling_occupancy_grid ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES})
+target_link_libraries(rolling_occupancy_grid ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} rolling_grid misc_utils)
 
-add_library(planning_env src/planning_env/planning_env.cpp)
+add_library(planning_env STATIC src/planning_env/planning_env.cpp)
 ament_target_dependencies(planning_env rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
-target_link_libraries(planning_env ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} rolling_occupancy_grid)
+target_link_libraries(planning_env ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} rolling_occupancy_grid pointcloud_manager lidar_model viewpoint_manager pointcloud_utils misc_utils)
 
 add_library(exploration_path src/exploration_path/exploration_path.cpp)
 ament_target_dependencies(exploration_path rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
@@ -128,12 +128,12 @@ target_link_libraries(exploration_path ${PROJECT_NAME}__rosidl_typesupport_cpp $
 
 add_library(tare_visualizer src/tare_visualizer/tare_visualizer.cpp)
 ament_target_dependencies(tare_visualizer rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
-target_link_libraries(tare_visualizer ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(tare_visualizer ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} grid_world misc_utils)
 
 # 新增
 add_library(multi_tare_visualizer src/tare_visualizer/multi_tare_visualizer.cpp)
 ament_target_dependencies(multi_tare_visualizer rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
-target_link_libraries(multi_tare_visualizer ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(multi_tare_visualizer ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} grid_world misc_utils)
 
 add_library(sensor_coverage_planner_ground src/sensor_coverage_planner/sensor_coverage_planner_ground.cpp)
 ament_target_dependencies(sensor_coverage_planner_ground rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
