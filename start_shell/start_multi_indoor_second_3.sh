@@ -1,5 +1,11 @@
 #!/bin/bash
-SCRIPTS_DIR="/home/hqy/mycode/Multi_TARE"
+# Ensure REPO_ROOT is set when the script is run directly
+if [[ -z "${REPO_ROOT}" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+  export REPO_ROOT
+fi
+SCRIPTS_DIR="${REPO_ROOT}"
 TARE_SCRIPT="$SCRIPTS_DIR/multi_Tare_planner/start_shell_tare/start_explore_indoor_second_3.sh"
 AUTOEXP_SCRIPT="$SCRIPTS_DIR/autoExpEnv_ws/start_shell_autoExpEnv/start_indoor_second_3.sh"
 
