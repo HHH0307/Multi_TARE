@@ -397,7 +397,6 @@ bool SensorCoveragePlanner3D::initialize() {
 
   lidar_model_ns::LiDARModel::setCloudDWZResol(planning_env_->GetPlannerCloudResolution());
 
-  // execution_timer_ = this->create_wall_timer(1000ms, std::bind(&SensorCoveragePlanner3D::execute, this)); // 要先启动tare，再启动env
   execution_timer_ = this->create_wall_timer(1000ms, std::bind(&SensorCoveragePlanner3D::execute_grid_merger_graph, this)); // 要先启动tare，再启动env
 
   exploration_start_sub_ = this->create_subscription<std_msgs::msg::Bool>(

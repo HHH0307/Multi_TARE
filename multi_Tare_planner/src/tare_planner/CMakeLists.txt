@@ -126,18 +126,10 @@ add_library(exploration_path src/exploration_path/exploration_path.cpp)
 ament_target_dependencies(exploration_path rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
 target_link_libraries(exploration_path ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_library(tare_visualizer src/tare_visualizer/tare_visualizer.cpp)
-ament_target_dependencies(tare_visualizer rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
-target_link_libraries(tare_visualizer ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} grid_world misc_utils)
-
 # 新增
 add_library(multi_tare_visualizer src/tare_visualizer/multi_tare_visualizer.cpp)
 ament_target_dependencies(multi_tare_visualizer rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
 target_link_libraries(multi_tare_visualizer ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} grid_world misc_utils)
-
-add_library(sensor_coverage_planner_ground src/sensor_coverage_planner/sensor_coverage_planner_ground.cpp)
-ament_target_dependencies(sensor_coverage_planner_ground rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
-target_link_libraries(sensor_coverage_planner_ground ${catkin_LIBRARIES} graph planning_env keypose_graph viewpoint_manager pointcloud_manager grid_world local_coverage_planner tare_visualizer)
 
 # 新增
 add_library(multi_sensor_coverage_planner_ground src/sensor_coverage_planner/multi_sensor_coverage_planner_ground.cpp)
@@ -147,10 +139,6 @@ target_link_libraries(multi_sensor_coverage_planner_ground ${PROJECT_NAME}__rosi
 add_executable(navigationBoundary src/navigation_boundary_publisher/navigationBoundary.cpp)
 ament_target_dependencies(navigationBoundary rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions)
 target_link_libraries(navigationBoundary ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-add_executable(tare_planner_node src/tare_planner_node/tare_planner_node.cpp)
-ament_target_dependencies(tare_planner_node rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
-target_link_libraries(tare_planner_node ${catkin_LIBRARIES} sensor_coverage_planner_ground)
 
 # 新增
 add_executable(multi_tare_planner_node src/tare_planner_node/multi_tare_planner_node.cpp)
@@ -163,7 +151,6 @@ target_link_libraries(multi_tare_planner_node ${PROJECT_NAME}__rosidl_typesuppor
 
 install(TARGETS
   navigationBoundary
-  tare_planner_node
   multi_tare_planner_node
   DESTINATION lib/${PROJECT_NAME}
   )

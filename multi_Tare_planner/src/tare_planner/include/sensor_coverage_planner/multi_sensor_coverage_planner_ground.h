@@ -79,11 +79,6 @@ class SensorCoveragePlanner3D : public rclcpp::Node {
 public:
   explicit SensorCoveragePlanner3D();
   bool initialize();
-  void execute();
-  void execute_pro();
-  void execute_max();
-  void execute_grid_graph();
-  void execute_grid_graph_opt();
   void execute_grid_merger_graph();
   ~SensorCoveragePlanner3D() = default;
 
@@ -384,22 +379,13 @@ private:
   void UpdateGlobalRepresentation();
   void GlobalPlanning(std::vector<int> &global_cell_tsp_order, exploration_path_ns::ExplorationPath &global_path);
 
-  //新增  全局规划
-  void GlobalPlanning_pro(std::vector<int>& global_cell_tsp_order, exploration_path_ns::ExplorationPath& global_path,bool& is_global_tsp);
-  //新增  全局规划
-  void GlobalPlanning_max(std::vector<int>& global_cell_tsp_order, exploration_path_ns::ExplorationPath& global_path,bool& is_global_tsp);
-  //新增全局规划  第三代
-  void GlobalPlanning_grid_graph(std::vector<int>& global_cell_tsp_order, exploration_path_ns::ExplorationPath& global_path,bool& is_global_tsp);
-  // 新增  全局规划第4代  使用 merger graph  代替keypose_graph  的  功能
+  // 新增  全局规划 使用 merger graph 代替 keypose_graph 的功能
   void GlobalPlanning_grid_merger_graph(std::vector<int>& global_cell_tsp_order, exploration_path_ns::ExplorationPath& global_path,bool& is_global_tsp);
 
   void PublishGlobalPlanningVisualization(const exploration_path_ns::ExplorationPath &global_path, const exploration_path_ns::ExplorationPath &local_path);
   void LocalPlanning(int uncovered_point_num, int uncovered_frontier_point_num, const exploration_path_ns::ExplorationPath &global_path, exploration_path_ns::ExplorationPath &local_path);
 
-  //添加 修改的局部路径规划    只需要当前位置  和前视点（上一次目标点） 和
-  void LocalPlanning_pro(int uncovered_point_num, int uncovered_frontier_point_num, const exploration_path_ns::ExplorationPath& global_path, exploration_path_ns::ExplorationPath& local_path);
-  
-  // 添加  优化版本的  局部规划
+  // 添加  优化版本的 局部规划
   void LocalPlanning_opt(int uncovered_point_num, int uncovered_frontier_point_num, const std::vector<exploration_path_ns::ExplorationPath> &near_localcoverage_subgrid_paths, exploration_path_ns::ExplorationPath &local_path);
 
   //添加 获取靠近局部规划框的  探索子网格到机器人的路径
@@ -426,10 +412,6 @@ private:
   bool
   GetLookAheadPoint(const exploration_path_ns::ExplorationPath &local_path, const exploration_path_ns::ExplorationPath &global_path, Eigen::Vector3d &lookahead_point);
 
-  //新增    GetLookAheadPoint_Globalpath  从全局路径得到前视点  发布
-  bool GetLookAheadPoint_Globalpath(const exploration_path_ns::ExplorationPath& global_path, Eigen::Vector3d& lookahead_point);
-
-  bool GetLookAheadPoint_Globalpath_max(const exploration_path_ns::ExplorationPath& global_path, Eigen::Vector3d& lookahead_point);
   //新增 GetLookAheadPoint_Localpath     从局部路径得到前视点 发布
   bool GetLookAheadPoint_Localpath(const exploration_path_ns::ExplorationPath& local_path, Eigen::Vector3d& lookahead_point);
   // 新增  服务
