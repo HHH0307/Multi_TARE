@@ -73,7 +73,6 @@ namespace sensor_coverage_planner_3d_ns
 const std::string kWorldFrameID = "map";
 typedef pcl::PointXYZRGBNormal PlannerCloudPointType;
 typedef pcl::PointCloud<PlannerCloudPointType> PlannerCloudType;
-typedef misc_utils_ns::Timer Timer;
 
 class SensorCoveragePlanner3D : public rclcpp::Node {
 public:

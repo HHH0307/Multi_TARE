@@ -748,9 +748,9 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveTSP(
     }
   }
 
+
   find_path_timer.Stop(false);
   find_path_runtime_ += find_path_timer.GetDuration(kRuntimeUnit);
-
   misc_utils_ns::Timer tsp_timer("tsp");
   tsp_timer.Start();
 
@@ -790,6 +790,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveTSP(
 
   tsp_timer.Stop(false);
   tsp_runtime_ += tsp_timer.GetDuration(kRuntimeUnit);
+
 
   if (path_index.size() > 1) {
     int cur_ind;
@@ -966,9 +967,9 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveTSP_without_Star
     }
   }
 
+
   find_path_timer.Stop(false);
   find_path_runtime_ += find_path_timer.GetDuration(kRuntimeUnit);
-
   misc_utils_ns::Timer tsp_timer("tsp");
   tsp_timer.Start();
 
@@ -1005,6 +1006,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveTSP_without_Star
 
   tsp_timer.Stop(false);
   tsp_runtime_ += tsp_timer.GetDuration(kRuntimeUnit);
+
 
   if (path_index.size() > 1)
   {
@@ -1086,6 +1088,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
 
   misc_utils_ns::Timer find_path_timer("find path");
   find_path_timer.Start();
+
 
   std::vector<int> navigation_viewpoint_indices;
   GetNavigationViewPointIndices(global_path, navigation_viewpoint_indices);
@@ -1192,7 +1195,6 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
   } else {
     misc_utils_ns::Timer select_viewpoint_timer("viewpoint sampling");
     select_viewpoint_timer.Start();
-
     // std::cout << "entering tsp routine" << std::endl;
     std::vector<int> selected_viewpoint_indices_itr;
 
@@ -1257,8 +1259,10 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
 
   misc_utils_ns::Timer find_path_timer("find path");
   find_path_timer.Start();
+
   std::vector<int> navigation_viewpoint_indices; 
   GetNavigationViewPointIndices_pro(historical_path, navigation_viewpoint_indices); 
+
   find_path_timer.Stop(false);
   find_path_runtime_ += find_path_timer.GetDuration(kRuntimeUnit);
 
@@ -1331,6 +1335,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
   viewpoint_sampling_timer.Stop(false, kRuntimeUnit);
   viewpoint_sampling_runtime_ += viewpoint_sampling_timer.GetDuration(kRuntimeUnit);
 
+
   std::vector<int> ordered_viewpoint_indices;
   if (!queue.empty() && queue[0].first > parameters_.kMinAddPointNum)  //排序不未空,且第一个点数量大于最小添加点.
   {
@@ -1360,7 +1365,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
 
       select_viewpoint_timer.Stop(false, kRuntimeUnit);
       viewpoint_sampling_runtime_ += select_viewpoint_timer.GetDuration(kRuntimeUnit);
-      // std::cout<<"参加  局部  TSP 点个数"<<selected_viewpoint_indices_itr.size()<<std::endl;
+
       // Solve the TSP problem
       exploration_path_ns::ExplorationPath local_path_itr;
       local_path_itr = SolveTSP_without_StartAndEnd(selected_viewpoint_indices_itr, ordered_viewpoint_indices);
@@ -1380,7 +1385,6 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
     misc_utils_ns::Timer select_viewpoint_timer("viewpoint sampling");
     select_viewpoint_timer.Start();
 
-    // std::cout << "entering tsp routine" << std::endl;
     std::vector<int> selected_viewpoint_indices_itr;
 
     // Add viewpoints from last planning cycle              其他候选点不满足条件  ,    只加入之前预选的点
@@ -1405,7 +1409,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
 
     select_viewpoint_timer.Stop(false, kRuntimeUnit);
     viewpoint_sampling_runtime_ += select_viewpoint_timer.GetDuration(kRuntimeUnit);
-    // std::cout<<"参加  局部  TSP 点个数"<<selected_viewpoint_indices_itr.size()<<std::endl;
+
     local_path = SolveTSP_without_StartAndEnd(selected_viewpoint_indices_itr, ordered_viewpoint_indices);
 
     last_selected_viewpoint_indices_ = ordered_viewpoint_indices;
@@ -1449,11 +1453,12 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
 
   misc_utils_ns::Timer find_path_timer("find path");
   find_path_timer.Start();
+
   std::vector<int> navigation_viewpoint_indices;  //导航视点  ID集合
   GetNavigationViewPointIndices_opt(near_localcoverage_subgrid_paths, navigation_viewpoint_indices);
 
-  std::cout << "导航点  个数" << navigation_viewpoint_indices.size() << std::endl;  //  2个  ~ n 个
   navigation_viewpoint_num_ = navigation_viewpoint_indices.size();
+
   find_path_timer.Stop(false);
   find_path_runtime_ += find_path_timer.GetDuration(kRuntimeUnit);
 
@@ -1526,6 +1531,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
   viewpoint_sampling_timer.Stop(false, kRuntimeUnit);
   viewpoint_sampling_runtime_ += viewpoint_sampling_timer.GetDuration(kRuntimeUnit);
 
+
   std::vector<int> ordered_viewpoint_indices;
   if (!queue.empty() && queue[0].first > parameters_.kMinAddPointNum)  //排序不未空,且第一个点数量大于最小添加点.
   {
@@ -1536,6 +1542,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
 
       misc_utils_ns::Timer select_viewpoint_timer("select viewpoints");
       select_viewpoint_timer.Start();
+
       SelectViewPoint_UseDistance(queue, covered, selected_viewpoint_indices_itr, false);  //核心 选点 并更新奖励
       SelectViewPointFromFrontierQueue(frontier_queue, frontier_covered, selected_viewpoint_indices_itr);
 
@@ -1552,6 +1559,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
 
       select_viewpoint_timer.Stop(false, kRuntimeUnit);
       viewpoint_sampling_runtime_ += select_viewpoint_timer.GetDuration(kRuntimeUnit);
+
       exploration_path_ns::ExplorationPath local_path_itr;
       local_path_itr = SolveTSP(selected_viewpoint_indices_itr, ordered_viewpoint_indices);
 
@@ -1592,6 +1600,7 @@ exploration_path_ns::ExplorationPath LocalCoveragePlanner::SolveLocalCoveragePro
 
     select_viewpoint_timer.Stop(false, kRuntimeUnit);
     viewpoint_sampling_runtime_ += select_viewpoint_timer.GetDuration(kRuntimeUnit);
+
     local_path = SolveTSP(selected_viewpoint_indices_itr, ordered_viewpoint_indices);
 
     last_selected_viewpoint_indices_ = ordered_viewpoint_indices;

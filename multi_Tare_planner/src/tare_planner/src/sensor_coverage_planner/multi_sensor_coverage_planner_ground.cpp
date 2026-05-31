@@ -933,7 +933,7 @@ void SensorCoveragePlanner3D::UpdateKeyposeGraph() {
   keypose_graph_->CheckConnectivity(robot_position_);
   keypose_graph_->GetVisualizationCloud(keypose_graph_vis_cloud_->cloud_);
   keypose_graph_vis_cloud_->Publish();
-  update_keypose_graph_timer.Stop(true);
+  update_keypose_graph_timer.Stop(false);
 }
 
 // 更新 拼接图
@@ -941,7 +941,6 @@ void SensorCoveragePlanner3D::UpdateMergerGraph()
 {
   misc_utils_ns::Timer update_merger_graph_timer("update merger graph");
   update_merger_graph_timer.Start();
-
   // 定义 单次 维护 merger_graph 添加的边和删除的边
   std::vector<std::pair<int, int>> delete_edge;
   std::vector<std::pair<int, int>> add_edge;
@@ -985,8 +984,7 @@ void SensorCoveragePlanner3D::UpdateMergerGraph()
   merger_graph_->CheckConnectivityIkdtree(robot_position_);  // 检测连通性
   merger_graph_->GetVisualizationCloud(merger_graph_vis_cloud_->cloud_);
   merger_graph_vis_cloud_->Publish(); 
-
-  update_merger_graph_timer.Stop(true);
+  update_merger_graph_timer.Stop(false);
 }
 
 int SensorCoveragePlanner3D::UpdateViewPoints() {
@@ -994,7 +992,6 @@ int SensorCoveragePlanner3D::UpdateViewPoints() {
   collision_cloud_timer.Start();
   collision_cloud_->cloud_ = planning_env_->GetCollisionCloud();
   collision_cloud_timer.Stop(false);
-
   misc_utils_ns::Timer viewpoint_manager_update_timer("update viewpoint manager");
   viewpoint_manager_update_timer.Start();
   if (kUseTerrainHeight) {
@@ -1024,10 +1021,8 @@ int SensorCoveragePlanner3D::UpdateViewPoints() {
   // For visualization
   collision_cloud_->Publish();
   // collision_grid_cloud_->Publish();
-  viewpoint_manager_->GetCollisionViewPointVisCloud(
-      viewpoint_in_collision_cloud_->cloud_);
+  viewpoint_manager_->GetCollisionViewPointVisCloud(viewpoint_in_collision_cloud_->cloud_);
   viewpoint_in_collision_cloud_->Publish();
-
   viewpoint_manager_update_timer.Stop(false);
   return viewpoint_candidate_count;
 }
@@ -1044,7 +1039,7 @@ void SensorCoveragePlanner3D::UpdateViewPointCoverage() {
   robot_pose.position = robot_position_;
   robot_viewpoint_.setPose(robot_pose);
   UpdateRobotViewPointCoverage();
-  update_coverage_timer.Stop(true);
+  update_coverage_timer.Stop(false);
 }
 
 void SensorCoveragePlanner3D::UpdateRobotViewPointCoverage() {
@@ -1064,13 +1059,11 @@ void SensorCoveragePlanner3D::UpdateCoveredAreas(int &uncovered_point_num, int &
   misc_utils_ns::Timer update_coverage_area_timer("update covered area");
   update_coverage_area_timer.Start();
   planning_env_->UpdateCoveredArea(robot_viewpoint_, viewpoint_manager_);
-
-  update_coverage_area_timer.Stop(true);
+  update_coverage_area_timer.Stop(false);
   misc_utils_ns::Timer get_uncovered_area_timer("get uncovered area");
   get_uncovered_area_timer.Start();
   planning_env_->GetUncoveredArea(viewpoint_manager_, uncovered_point_num, uncovered_frontier_point_num);
-
-  get_uncovered_area_timer.Stop(true);
+  get_uncovered_area_timer.Stop(false);
   planning_env_->PublishUncoveredCloud();
   planning_env_->PublishUncoveredFrontierCloud();
 }
@@ -1142,7 +1135,7 @@ void SensorCoveragePlanner3D::UpdateGlobalRepresentation() {
   if (!grid_world_->HomeSet()) {
     grid_world_->SetHomePosition(initial_position_);
   }
-   update_Global_ENV_timer.Stop(true);
+  update_Global_ENV_timer.Stop(false);
 }
 
 // 新增更新全局状态
@@ -1150,7 +1143,6 @@ void SensorCoveragePlanner3D::GlobalStatuUpdate()
 {
   misc_utils_ns::Timer global_tsp_timer("Global StatuUpdate");
   global_tsp_timer.Start();
-  
   // 更新来自其他机器人的网格世界状态
   grid_world_->UpdateGridWorldCellFromOtherRobots(Update_Grid_World_ID_and_Statu_);
   
@@ -1193,9 +1185,9 @@ void SensorCoveragePlanner3D::GlobalStatuUpdate()
   // 更新候选视点单元格状态
   viewpoint_manager_->UpdateCandidateViewPointCellStatus(grid_world_);
 
-  // 记录运行时间
-  global_tsp_timer.Stop(true);
+  global_tsp_timer.Stop(false);
   global_planning_runtime_ = global_tsp_timer.GetDuration("ms");
+
 }
 
 // 修改 全局 规划 使用 merger graph 代替
@@ -1217,9 +1209,9 @@ void SensorCoveragePlanner3D::GlobalPlanning_grid_merger_graph(std::vector<int>&
       merger_graph_,               // 全局拼接图
       other_robot_position_map_);      // 其他机器人位置映射
 
-  // 记录运行时间
-  global_tsp_timer.Stop(true);
-  global_planning_runtime_ = global_tsp_timer.GetDuration("ms"); 
+  global_tsp_timer.Stop(false);
+  global_planning_runtime_ = global_tsp_timer.GetDuration("ms");
+
 }
 
 void SensorCoveragePlanner3D::PublishGlobalPlanningVisualization(const exploration_path_ns::ExplorationPath &global_path,
@@ -1297,7 +1289,6 @@ void SensorCoveragePlanner3D::LocalPlanning_opt(int uncovered_point_num, int unc
 {
   misc_utils_ns::Timer local_tsp_timer("Local planning");
   local_tsp_timer.Start();
-  
   if (lookahead_point_update_)
   {
     local_coverage_planner_->SetLookAheadPoint(lookahead_point_);
@@ -1308,9 +1299,7 @@ void SensorCoveragePlanner3D::LocalPlanning_opt(int uncovered_point_num, int unc
   // 求解优化的局部覆盖问题
   local_path = local_coverage_planner_->SolveLocalCoverageProblem_opt(near_localcoverage_subgrid_paths, uncovered_point_num, uncovered_frontier_point_num);
 
-  RCLCPP_INFO(this->get_logger(), "local_path.nodes_.size()   =   %zu", local_path.nodes_.size());
-  
-  local_tsp_timer.Stop(true);
+  local_tsp_timer.Stop(false);
 }
 
 // 添加获取靠近局部规划框的探索子网格到机器人的路径
@@ -2274,8 +2263,8 @@ bool SensorCoveragePlanner3D::GetLookAheadPoint_Localpath(const exploration_path
     else
     {
       lookahead_point = (forward_angle_score > backward_angle_score) ? forward_lookahead_point : backward_lookahead_point;
-      RCLCPP_INFO(this->get_logger(), "机器人: %s 基于角度分数选择方向 (前向: %.2f, 后向: %.2f)",
-                robot_name.c_str(), forward_angle_score, backward_angle_score);
+      // RCLCPP_INFO(this->get_logger(), "机器人: %s 基于角度分数选择方向 (前向: %.2f, 后向: %.2f)",
+      //           robot_name.c_str(), forward_angle_score, backward_angle_score);
     }
   }
 
@@ -2283,7 +2272,7 @@ bool SensorCoveragePlanner3D::GetLookAheadPoint_Localpath(const exploration_path
            viewpoint_manager_->InLocalPlanningHorizon(local_path.nodes_[lookahead_i].position_))
   {
     lookahead_point = local_path.nodes_[lookahead_i].position_;
-    RCLCPP_INFO(this->get_logger(), "机器人: %s 选择前一次目标视点", robot_name.c_str());
+    // RCLCPP_INFO(this->get_logger(), "机器人: %s 选择前一次目标视点", robot_name.c_str());
   }
 
   else
@@ -2293,12 +2282,12 @@ bool SensorCoveragePlanner3D::GetLookAheadPoint_Localpath(const exploration_path
       if (forward_viewpoint_count > 0)
       {
         lookahead_point = forward_lookahead_point;
-        RCLCPP_INFO(this->get_logger(), "机器人: %s 选择向前视点", robot_name.c_str());
+        // RCLCPP_INFO(this->get_logger(), "机器人: %s 选择向前视点", robot_name.c_str());
       }
       else
       {
         lookahead_point = backward_lookahead_point;
-        RCLCPP_INFO(this->get_logger(), "机器人: %s 选择向后视点", robot_name.c_str());
+        // RCLCPP_INFO(this->get_logger(), "机器人: %s 选择向后视点", robot_name.c_str());
       }
     }
     else
@@ -2306,12 +2295,12 @@ bool SensorCoveragePlanner3D::GetLookAheadPoint_Localpath(const exploration_path
       if (backward_viewpoint_count > 0)
       {
         lookahead_point = backward_lookahead_point;
-        RCLCPP_INFO(this->get_logger(), "机器人: %s 选择向后视点", robot_name.c_str());
+        // RCLCPP_INFO(this->get_logger(), "机器人: %s 选择向后视点", robot_name.c_str());
       }
       else
       {
         lookahead_point = forward_lookahead_point;
-        RCLCPP_INFO(this->get_logger(), "机器人: %s 选择向前视点", robot_name.c_str());
+        // RCLCPP_INFO(this->get_logger(), "机器人: %s 选择向前视点", robot_name.c_str());
       }
     }
   }
@@ -2490,8 +2479,7 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     return;
   }
   
-  Timer overall_processing_timer("overall processing");
-
+  // Timer overall_processing_timer("overall processing");
   update_representation_runtime_ = 0;
   local_viewpoint_sampling_runtime_ = 0;
   local_path_finding_runtime_ = 0;
@@ -2507,8 +2495,7 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     return;
   }
 
-  overall_processing_timer.Start();  // 开始计时
-  
+  // overall_processing_timer.Start();
   RCLCPP_DEBUG(this->get_logger(), "++++++++++++++++++++++++++++++ start ++++++++++++++++++++++++++++++");
   
   if (keypose_cloud_update_)  
@@ -2617,7 +2604,7 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     if (robot_statu_ == grid_world_ns::RobotStatus::Far_planner)  
     {
       GetLookAheadPoint_Globalpath_Far(global_path, lookahead_point_);
-      RCLCPP_INFO(this->get_logger(), "robot_statu_= Far_planner");
+      // RCLCPP_INFO(this->get_logger(), "robot_statu_= Far_planner");
     }
     else  
     {
@@ -2625,11 +2612,11 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
       {
         is_exploring_ = true;
         lookahead_point_update_ = GetLookAheadPoint_Localpath(local_path_sort, lookahead_point_);
-        RCLCPP_INFO(this->get_logger(), "robot_statu_= Exploring");
+        // RCLCPP_INFO(this->get_logger(), "robot_statu_= Exploring");
       }
       else
       {
-        RCLCPP_INFO(this->get_logger(), "robot_statu_= Global_tsp || Return_home");
+        // RCLCPP_INFO(this->get_logger(), "robot_statu_= Global_tsp || Return_home");
         
         exploration_path_ns::ExplorationPath global_local_path;
         bool use_local = false;
@@ -2657,10 +2644,9 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     }
     
     PublishWaypoint();  // 发布 waypint
+    // overall_processing_timer.Stop(false);
+    // overall_runtime_ = overall_processing_timer.GetDuration("ms");  // 记录运行时间
     
-    overall_processing_timer.Stop(false);
-    overall_runtime_ = overall_processing_timer.GetDuration("ms");  // 记录运行时间
-
     // 可视化相关
     visualizer_->GetGlobalSubspaceMarker(grid_world_, global_cell_tsp_order);
     Eigen::Vector3d viewpoint_origin = viewpoint_manager_->GetOrigin();

@@ -185,9 +185,6 @@ void ViewPointManager::ComputeInRangeNeighborIndices()
 
 void ViewPointManager::GetCollisionCorrespondence()
 {
-  misc_utils_ns::Timer timer("get collision grid correspondence");
-  timer.Start();
-
   collision_grid_origin_ = Eigen::Vector3d::Zero();
   for (int i = 0; i < vp_.dimension_; i++)
   {
@@ -251,7 +248,6 @@ void ViewPointManager::GetCollisionCorrespondence()
     }
   }
 
-  timer.Stop(false);
 }
 
 bool ViewPointManager::UpdateRobotPosition(const Eigen::Vector3d& robot_position)
@@ -314,9 +310,6 @@ bool ViewPointManager::UpdateRobotPosition(const Eigen::Vector3d& robot_position
   //           << std::endl;
   grid_->Roll(rollover_step);
 
-  misc_utils_ns::Timer reset_timer("reset viewpoint");
-  reset_timer.Start();
-
   //   origin_ = origin_ - rollover_step.cast<double>() * vp_.kResolution;
   origin_.x() -= rollover_step.x() * vp_.kResolution.x();
   origin_.y() -= rollover_step.y() * vp_.kResolution.y();
@@ -334,7 +327,6 @@ bool ViewPointManager::UpdateRobotPosition(const Eigen::Vector3d& robot_position
     SetViewPointPosition(ind, new_position);
     ResetViewPoint(ind);
   }
-  reset_timer.Stop(false);
   return true;
 }
 

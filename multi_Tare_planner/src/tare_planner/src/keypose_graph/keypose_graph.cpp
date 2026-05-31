@@ -41,10 +41,7 @@ KeyposeGraph::KeyposeGraph()
   connected_nodes_cloud_ = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
   kdtree_nodes_ = pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr(new pcl::KdTreeFLANN<pcl::PointXYZI>());
   nodes_cloud_ = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
-  //初始化
-  fringe_search_win_times = 0;  //  fringe 赢的次数
-  cumulative_time = 0;          //  A*- fringe search 时间的累计次数 越大说明 fringe search 时间上越好
-  all_times = 0;                //运行寻路算法的次数
+  // 初始化
   new_keypose_ind_ = 0;
 
   // 新增  共享 初始化  给robot id
@@ -67,10 +64,7 @@ KeyposeGraph::KeyposeGraph(rclcpp::Node::SharedPtr nh)
   connected_nodes_cloud_ = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
   kdtree_nodes_ = pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr(new pcl::KdTreeFLANN<pcl::PointXYZI>());
   nodes_cloud_ = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
-  //初始化
-  fringe_search_win_times = 0;  //  fringe 赢的次数
-  cumulative_time = 0;          //  A*- fringe search 时间的累计次数 越大说明 fringe search 时间上越好
-  all_times = 0;                //运行寻路算法的次数
+  // 初始化
   new_keypose_ind_ = 0;
 
   // 新增  共享 初始化  给robot id
@@ -1240,17 +1234,13 @@ double KeyposeGraph::GetShortestPath(const geometry_msgs::msg::Point& start_poin
 
   std::vector<geometry_msgs::msg::Point> node_positions;
   // A*
-  misc_utils_ns::Timer T_A_star("  A*  time");
   for (int i = 0; i < nodes_.size(); i++)
   {
     node_positions.push_back(nodes_[i].position_);
   }
   std::vector<int> path_indices;
-  T_A_star.Start();
   double shortest_dist =
       misc_utils_ns::AStarSearch(graph_, dist_, node_positions, from_idx, to_idx, get_path, path_indices);
-  T_A_star.Stop(false);  // ture 显示花费时间
-  int A_star_time = T_A_star.GetDuration("ms");
   if (get_path)
   {
     path.poses.clear();

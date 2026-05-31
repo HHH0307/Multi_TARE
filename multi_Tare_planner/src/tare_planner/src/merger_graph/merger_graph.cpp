@@ -187,7 +187,7 @@ void MergerGraph::MaintainConnectedNodesIkdtree()
   if (diff_nodes_ind_add.size() > 0)
   {
     pcl::PointCloud<pcl::PointXYZI> add_nodes;
-    for (int i = 0; i < diff_nodes_ind_add.size(); i++)
+    for (size_t i = 0; i < diff_nodes_ind_add.size(); i++)
     {
       pcl::PointXYZI point;
       geometry_msgs::msg::Point temp = GetNodePosition(diff_nodes_ind_add[i]);
@@ -638,11 +638,7 @@ void MergerGraph::AddEdgeLocalRobotWithOtherRobotNodesInRange(
 
   //  使用ikdtree    在  以   start_point     为中心 求  范围  range  的  节点
   std::vector<int> node_indices;
-  misc_utils_ns::Timer ikdtree_search("ikdtree search");
-  ikdtree_search.Start();
   GetRangeClosestConnectedNodeIndIkdtree(start_point, range, node_indices);
-  ikdtree_search.Stop(true, "us");
-  // std::cout << "ikdtree  search  range node size =  " << node_indices.size() << std::endl;
 
   // 选择  非本地机器人 的   节点
   std::vector<int> diff_robot_id_node_indices;

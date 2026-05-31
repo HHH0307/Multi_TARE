@@ -553,7 +553,6 @@ public:
         roadmap_connection_point_set_ = set;
     }
 
-    //新增
     int GetMTSP_graph_index_find_exploring_cell_()
     {
         return MTSP_graph_index_find_exploring_cell_;
@@ -561,7 +560,7 @@ public:
 
     void SetMTSP_graph_index_find_exploring_cell_(int index)
     {
-        MTSP_graph_index_find_exploring_cell_=index;
+        MTSP_graph_index_find_exploring_cell_ = index;
     }
 
     // 新增  获取  当前网格内的  拼接图    的节点的  索引
@@ -639,14 +638,9 @@ private:
     bool path_added_to_keypose_graph_;
     // If the roadmap connection point has been added to the cell  是否连接路径图的点被加入这个单元
     bool roadmap_connection_point_set_;
-    // 是否添加进  add_MTSP_graph
-    bool add_MTSP_graph_;
-    //反向记录   查找 当前cell  在 MTSP_grid_graph  中的地址
-    int MTSP_grid_graph_index_;
-
     //新增一个积累当前单元连接其他单元的  容器
     std::vector<int> long_term_connected_cell_indices_; //长期的连接，  只有断开连接  没有清空操作
-    int  MTSP_graph_index_find_exploring_cell_; //  机器人在  图上的  索引
+    int MTSP_graph_index_find_exploring_cell_; //  机器人在  图上的  索引
 
     //merger_graph添加 在 网格的节点  所不同 的  机器人 编号
     std::set<int> merger_graph_robot_id_set_;
@@ -668,60 +662,6 @@ public:
     void UpdateRobotPosition(const geometry_msgs::msg::Point& robot_position);
     void UpdateCellKeyposeGraphNodes(const std::shared_ptr<keypose_graph_ns::KeyposeGraph> &keypose_graph);
 
-    int GetMinAddPointNum()
-    {
-        return kMinAddPointNumSmall;
-    }
-    
-    int GetMinAddFrontierPointNum()
-    {
-        return kMinAddFrontierPointNum;
-    }
-    
-    geometry_msgs::msg::Point GetOrigin()
-    {
-        // return origin_;
-        Eigen::Vector3d origin = subspaces_->GetOrigin();
-        geometry_msgs::msg::Point geo_origin;
-        geo_origin.x = origin.x();
-        geo_origin.y = origin.y();
-        geo_origin.z = origin.z();
-        return geo_origin;
-    }
-    
-    int sub2ind(const Eigen::Vector3i& sub)
-    {
-        return subspaces_->Sub2Ind(sub);
-    }
-    
-    int sub2ind(int row_idx, int col_idx, int level_idx)
-    {
-        return subspaces_->Sub2Ind(row_idx, col_idx, level_idx);
-    }
-    
-    Eigen::Vector3i ind2sub(int ind)
-    {
-        return subspaces_->Ind2Sub(ind);
-    }
-    
-    void ind2sub(int ind, int& row_idx, int& col_idx, int& level_idx)
-    {
-        Eigen::Vector3i sub = subspaces_->Ind2Sub(ind);
-        row_idx = sub.x();
-        col_idx = sub.y();
-        level_idx = sub.z();
-    }
-    
-    bool SubInBound(const Eigen::Vector3i& sub)
-    {
-        return subspaces_->InRange(sub);
-    }
-    
-    bool SubInBound(int row_idx, int col_idx, int level_idx)
-    {
-        return subspaces_->InRange(Eigen::Vector3i(row_idx, col_idx, level_idx));
-    }
-    
     bool IndInBound(int ind)
     {
         return subspaces_->InRange(ind);
@@ -748,20 +688,10 @@ public:
         use_keypose_graph_ = use_keypose_graph;
     }
     
-    bool UseKeyposeGraph()
-    {
-        return use_keypose_graph_;
-    }
-
     void AddViewPointToCell(int cell_ind, int viewpoint_ind);  //给单元 添加视点
     void AddGraphNodeToCell(int cell_ind, int node_ind);  //添加图结点给单元
     void ClearCellViewPointIndices(int cell_ind);   //清理单元内的候选视点
     std::vector<int> GetCellViewPointIndices(int cell_ind);//得到单元的候选视点
-    std::vector<int> GetNeighborCellIndices()  //得到当前机器人单元的   邻接单元ID
-    {
-        return neighbor_cell_indices_;
-    };
-    
     void GetNeighborCellIndices(const Eigen::Vector3i& center_cell_sub, const Eigen::Vector3i& neighbor_range,
                               std::vector<int>& neighbor_indices);   //得到给定单元的   邻接单元ID
     void GetNeighborCellIndices(const geometry_msgs::msg::Point& position, const Eigen::Vector3i& neighbor_range,
@@ -780,49 +710,7 @@ public:
     int GetCellStatusCount(grid_world_ns::CellStatus status);  //得到单元状态数量
     void UpdateCellStatus(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager);   //更新单元状态  通过视点管理类
     //修改状态改变
-    void UpdateCellStatus_(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager);   //更新单元状态  通过视点管理类
-    
-    //保留
-    exploration_path_ns::ExplorationPath
-    SolveGlobalTSP(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager,
-                 std::vector<int>& ordered_cell_indices,
-                 const std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph = nullptr);  //求解全局  TSP
-    
-    //更改
-    exploration_path_ns::ExplorationPath
-    SolveGlobalTSP_(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager,
-                 std::vector<int>& ordered_cell_indices,
-                 std::vector<double>& M_TSP_subgrapher_code,
-                 std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-                 const std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph = nullptr);  //求解全局  TSP
-    
-    // 新增更改，使用 服务端
-    exploration_path_ns::ExplorationPath
-    SolveGlobalTSP_pro(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager,
-                 std::vector<int>& ordered_cell_indices,
-                 std::vector<double>& M_TSP_subgrapher_code,
-                 std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-                 bool& is_global_tsp,
-                 std::vector<rclcpp::Client<tare_planner::srv::RequestPath>::SharedPtr>& request_path_client_list_,
-                 std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph  );  //求解全局  TSP
-    
-    //新增更改，修改           
-    exploration_path_ns::ExplorationPath SolveGlobalTSP_max(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager,
-                 std::vector<int>& ordered_cell_indices,
-                 std::vector<double>& M_TSP_subgrapher_code,
-                 std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-                 bool& is_global_tsp,
-                 std::vector<rclcpp::Client<tare_planner::srv::RequestPath>::SharedPtr>& request_path_client_list_,
-                 std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph  );  //求解全局  TSP
-
-    // 新增修改    共享网格图 grid_graph
-    exploration_path_ns::ExplorationPath SolveGlobalTSP_grid_graph(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager,
-                 std::vector<int>& ordered_cell_indices,
-                 std::vector<double>& M_TSP_subgrapher_code,
-                 std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-                 bool& is_global_tsp,
-                 std::vector<rclcpp::Client<tare_planner::srv::RequestPath>::SharedPtr>& request_path_client_list_,
-                 std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph );  //求解全局  TSP
+    void UpdateCellStatus_(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager);   //更新单元状态  通过视点管理类    
 
     // 新增 修改  使用  merger  graph  做
     exploration_path_ns::ExplorationPath SolveGlobalMdvrp_merger_graph(
@@ -1104,10 +992,6 @@ private:
     //新增机器人状态
     RobotStatus  robot_statu_;
 
-    //新增容器   存储  本地发现的需要探索的单元   Cell
-    std::vector<int>  Cur_discover_exploring_cells;  //这个单元  发现的探索 单元
-    std::map<int,int>  Update_Grid_World_ID_and_Statu_2; //网格世界更新缓存
-
     // 新增断点累计  
     int Request_breakpoint_count_;    //  断点累计，当一次  Request  断点累计 到   10次之后，说明当前点不可通行  目标点是误点
     //新增  far_planner   请求信息
@@ -1120,12 +1004,7 @@ private:
 
     //新增  网格图
     MTSP_grid_graph MTSP_grid_graph_;
-    MTSP_graph_node last_far_navigation_node_;
-    MTSP_graph_node last_goal_node_;
-    std::vector<int> last_path_node_index_;//上一次路径  在MTSP_grid_graph   上的索引
     geometry_msgs::msg::Point goal_position_;//  记录准确的  全局规划     far目标点   和  Goal_tsp  目标点
-    bool have_Navigation_node_;
     int far_breakpoint_coint_;//坏点累计
-    bool last_far_planning_on_local_range_;//上一次的规划是否在本地范围内
 };
 }  // namespace grid_world_ns

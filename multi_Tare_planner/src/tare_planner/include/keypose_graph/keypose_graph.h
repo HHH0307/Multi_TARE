@@ -36,8 +36,6 @@ namespace keypose_graph_ns
 {
 struct KeyposeNode; // 结点数据结构体
 class KeyposeGraph; // 图数据类对象
-const double INF = 9999.0;
-typedef std::pair<int, int> iPair;
 }  // namespace keypose_graph_ns
 
 struct keypose_graph_ns::KeyposeNode
@@ -84,9 +82,7 @@ private:
   geometry_msgs::msg::Point current_keypose_position_;
   std::vector<std::vector<int>> graph_;
   std::vector<std::vector<double>> dist_;
-  std::vector<bool> in_local_planning_horizon_;
   std::vector<KeyposeNode> nodes_;
-  std::vector<geometry_msgs::msg::Point> node_positions_;
   pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtree_connected_nodes_;
   pcl::PointCloud<pcl::PointXYZI>::Ptr connected_nodes_cloud_;
   pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtree_nodes_;
@@ -105,16 +101,6 @@ private:
   double kAddEdgeCollisionCheckRadius;
   int kAddEdgeCollisionCheckPointNumThr;
   double kLocal_planning_radius;             // 局部规划半径
-
-  // 算法性能测试参数
-  int fringe_search_win_times;  // fringe搜索赢的次数
-  int cumulative_time;          // 时间累计次数
-  int all_times;                // 寻路算法运行总次数
-
-  static bool ComparePair(const std::pair<int, int>& a, const std::pair<int, int>& b)
-  {
-    return (a.first == b.first && a.second == b.second) || (a.first == b.second && a.second == b.first);
-  }
 
 public:
   // 默认构造函数
@@ -229,26 +215,29 @@ public:
   { 
     return nodes_.size(); 
   }
-  
-  // 删除边
-  void DeleteEdge(int node_1, int node_2) {
-    // 从node_1中删除node_2
-    for (size_t j = 0; j < graph_[node_1].size(); j++) {
-      if (graph_[node_1][j] == node_2) {
+
+  void DeleteEdge(int node_1, int node_2)
+  {
+    for (size_t j = 0; j < graph_[node_1].size(); j++)
+    {
+      if (graph_[node_1][j] == node_2)
+      {
         graph_[node_1].erase(graph_[node_1].begin() + j);
         dist_[node_1].erase(dist_[node_1].begin() + j);
         j--;
       }
     }
-    // 从node_2中删除node_1
-    for (size_t k = 0; k < graph_[node_2].size(); k++) {
-      if (graph_[node_2][k] == node_1) {
+    for (size_t k = 0; k < graph_[node_2].size(); k++)
+    {
+      if (graph_[node_2][k] == node_1)
+      {
         graph_[node_2].erase(graph_[node_2].begin() + k);
         dist_[node_2].erase(dist_[node_2].begin() + k);
         k--;
       }
     }
   }
+  
 
   // 获取不连通点云
   pcl::PointCloud<pcl::PointXYZI> GetDisConnectNodes() {

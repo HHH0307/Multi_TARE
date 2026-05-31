@@ -89,36 +89,17 @@ void TSPSolver::Solve() {
   solution_ = routing_->SolveWithParameters(searchParameters);
 }
 
-void TSPSolver::PrintSolution() {
-  // Inspect solution.
-  std::cout << "Objective: " << (solution_->ObjectiveValue()) / 10.0
-            << " meters" << std::endl;
-  int64_t index = routing_->Start(0);
-  std::cout << "Route:";
-  int64_t distance{0};
-  std::stringstream route;
-  while (routing_->IsEnd(index) == false) {/*  */
-    route << manager_->IndexToNode(index).value() << " -> ";
-    int64_t previous_index = index;
-    index = solution_->Value(routing_->NextVar(index));
-    distance += const_cast<RoutingModel &>(*routing_).GetArcCostForVehicle(previous_index, index, 0LL);
-  }
-  std::cout << route.str() << manager_->IndexToNode(index).value();
-  std::cout << "Route distance: " << distance / 10.0 << " meters";
-  std::cout << "Problem solved in " << routing_->solver()->wall_time() << "ms";
-}
-
 int TSPSolver::getComputationTime() { return routing_->solver()->wall_time(); }
 
 void TSPSolver::getSolutionNodeIndex(std::vector<int> &node_index,
                                      bool has_dummy) {
   node_index.clear();
-  if( is_MTSP  && Allocation_strategy=="MinDis")  //1 最近邻策略
+  if(is_MTSP && Allocation_strategy == "MinDis")  //1 最近邻策略
   {
     //输出
       node_index.push_back(TSP_depot);//当前位置
       return;
-  }else if( is_MTSP  && Allocation_strategy=="Greedy") //2  贪婪策略 Greedy
+  }else if(is_MTSP && Allocation_strategy == "Greedy") //2  贪婪策略 Greedy
   {
       //输出
       node_index.push_back(TSP_depot);//当前位置
@@ -130,7 +111,7 @@ void TSPSolver::getSolutionNodeIndex(std::vector<int> &node_index,
           std::cout<<"Greedy  分配成功"<<std::endl;
       }
       return ;
-  }else if(is_MTSP  && Allocation_strategy=="MinPos") //3 位置分级策略 MinPos 
+  }else if(is_MTSP && Allocation_strategy == "MinPos") //3 位置分级策略 MinPos 
   {
       //输出
       node_index.push_back(TSP_depot);//当前位置

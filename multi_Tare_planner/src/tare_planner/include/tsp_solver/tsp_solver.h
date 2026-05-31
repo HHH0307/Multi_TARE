@@ -19,7 +19,6 @@ namespace tsp_solver_ns {
 struct DataModel;
 struct DataModel_M;
 class TSPSolver;
-void PrintSolution(const RoutingIndexManager &manager, const RoutingModel &routing, const Assignment &solution);
 } // namespace tsp_solver_ns
 
 struct tsp_solver_ns::DataModel {
@@ -46,7 +45,6 @@ public:
   TSPSolver(DataModel data);
   ~TSPSolver() = default;
   void Solve();
-  void PrintSolution();
   int getComputationTime();
   void getSolutionNodeIndex(std::vector<int> &node_index, bool has_dummy);
   double getPathLength();
