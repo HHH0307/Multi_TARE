@@ -8,3 +8,6 @@ autoExpEnv_ws/src/vehicle_simulator/log/*
 multi_Tare_planner/build/*
 multi_Tare_planner/install/*
 multi_Tare_planner/log/*
+
+*.md
+*.txt

@@ -1323,10 +1323,40 @@ void GridWorld::GetUpdateNeighbor_NewGridWorldCellStatus_(std::vector<int>& Upda
 
 void GridWorld::UpdateGridWorldCellFromOtherRobots(std::map<int, int>& Update_Grid_World_ID_and_Statu_)
 {
+  const bool debug = true;
+  int count_unseen = 0;
+  int count_exploring = 0;
+  int count_covered = 0;
+  int count_covered_by_others = 0;
+  int count_nogo = 0;
+
   //从获得的网格世界 单元  ID和状态  更新到   subspaces_  里面去
   //只同步更新被探索点
   for (auto iter = Update_Grid_World_ID_and_Statu_.begin(); iter != Update_Grid_World_ID_and_Statu_.end(); ++iter)
   {
+    if (debug)
+    {
+      switch (iter->second)
+      {
+        case 0:
+          count_unseen++;
+          break;
+        case 1:
+          count_exploring++;
+          break;
+        case 2:
+          count_covered++;
+          break;
+        case 3:
+          count_covered_by_others++;
+          break;
+        case 4:
+          count_nogo++;
+          break;
+        default:
+          break;
+      }
+    }
     if (iter->second == 0)
     {
       // subspaces_->GetCell(iter->first).SetStatus(CellStatus::UNSEEN);    //不做变化
@@ -1346,6 +1376,7 @@ void GridWorld::UpdateGridWorldCellFromOtherRobots(std::map<int, int>& Update_Gr
       {
         subspaces_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
         subspaces_world_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
+        subspaces_local_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
       }
       else if (subspaces_->GetCell(iter->first).GetStatus() == CellStatus::COVERED)
       {
@@ -1355,6 +1386,7 @@ void GridWorld::UpdateGridWorldCellFromOtherRobots(std::map<int, int>& Update_Gr
       {
         subspaces_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
         subspaces_world_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
+        subspaces_local_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
       }
     }
     else if (iter->second == 3)  //其他传来      是 被其他覆盖   若是   本地是探索     则添加到本地探索点
@@ -1368,11 +1400,13 @@ void GridWorld::UpdateGridWorldCellFromOtherRobots(std::map<int, int>& Update_Gr
       {
         subspaces_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
         subspaces_world_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
+        subspaces_local_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
       }
       else  //若是其他则改成被其他覆盖
       {
         subspaces_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
         subspaces_world_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
+        subspaces_local_->GetCell(iter->first).SetStatus(CellStatus::COVERED_BY_OTHERS);
       }
     }
     else if (iter->second == 4)
@@ -1380,6 +1414,12 @@ void GridWorld::UpdateGridWorldCellFromOtherRobots(std::map<int, int>& Update_Gr
       // subspaces_->GetCell(iter->first).SetStatus(CellStatus::NOGO);    //别人不能通行   不代表其他方向不能通行
       // ，这个判定是困难的
     }
+  }
+  if (debug)
+  {
+    std::cout << "[GW][Share] UpdateGridWorldCellFromOtherRobots: total=" << Update_Grid_World_ID_and_Statu_.size()
+              << " unseen=" << count_unseen << " exploring=" << count_exploring << " covered=" << count_covered
+              << " covered_by_others=" << count_covered_by_others << " nogo=" << count_nogo << std::endl;
   }
   Update_Grid_World_ID_and_Statu_.clear();  //更新一次就清空  重新接受
 }
@@ -6414,6 +6454,7 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
     std::shared_ptr<merger_graph_ns::MergerGraph>& merger_graph,
     std::map<int, geometry_msgs::msg::Point>& other_robot_position_map)
 {
+  const bool debug = true;
   // 中心思想  使用  merger  graph  代替 keypsoe graph
   /*
    *  流程：
@@ -6697,6 +6738,14 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
     }
   }
 
+  if (debug)
+  {
+    std::cout << "[GW][MTSP] allocation_strategy=" << allocation_strategy_
+              << " other_robots=" << other_robot_position_map.size()
+              << " neighbor_exclude=" << neighbor_cell_indices_all.size()
+              << " exploring_world=" << exploring_cell_indices_world.size() << std::endl;
+  }
+
   num_world_neighbor_cell_reachable = exploring_cell_indices_world.size();
 
   //  计算 做 Mdvrp 的 机器人  个数
@@ -6706,17 +6755,44 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
                                                                          // exploring_cell_positions_world上的 索引
 
   // 首先  添加 当前机器人位置
-  robot_position_id_on_exploring_cell_positions_world.push_back(exploring_cell_indices_world.size());
-  exploring_cell_positions_world.push_back(global_path_robot_position);
-  exploring_cell_indices_world.push_back(-1);  //得到当前本地   可到达（探索点）   边界图   本地机器人的  网格索引
-  // 添加  其他机器人 位置
+  std::vector<int> robot_ids_sorted;
+  robot_ids_sorted.push_back(cur_robot_id_);
   for (auto& temp : other_robot_position_map)
   {
-    // 记录  机器人  站点    在  exploring_cell_positions_world 的  上的  索引    用于 Mdvrp  分配站点。
+    robot_ids_sorted.push_back(temp.first);
+  }
+  std::sort(robot_ids_sorted.begin(), robot_ids_sorted.end());
+  robot_ids_sorted.erase(std::unique(robot_ids_sorted.begin(), robot_ids_sorted.end()), robot_ids_sorted.end());
+
+  for (int i = 0; i < robot_ids_sorted.size(); i++)
+  {
+    int robot_id = robot_ids_sorted[i];
+    geometry_msgs::msg::Point robot_pos;
+    if (robot_id == cur_robot_id_)
+    {
+      robot_pos = global_path_robot_position;
+    }
+    else
+    {
+      robot_pos = other_robot_position_map[robot_id];
+    }
     robot_position_id_on_exploring_cell_positions_world.push_back(exploring_cell_indices_world.size());
-    exploring_cell_positions_world.push_back(temp.second);
-    int temp_robot_index = GetCellInd(temp.second.x, temp.second.y, temp.second.z);
+    exploring_cell_positions_world.push_back(robot_pos);
+    int temp_robot_index = GetCellInd(robot_pos.x, robot_pos.y, robot_pos.z);
     exploring_cell_indices_world.push_back(temp_robot_index);
+  }
+  if (debug)
+  {
+    std::cout << "[GW][MTSP] depot order (robot_id sorted): ";
+    for (int i = 0; i < robot_ids_sorted.size(); i++)
+    {
+      if (i != 0)
+      {
+        std::cout << ",";
+      }
+      std::cout << robot_ids_sorted[i];
+    }
+    std::cout << std::endl;
   }
   // std::cout << "参与探索机器人个数   =  " << robot_position_id_on_exploring_cell_positions_world.size() << std::endl;
 
@@ -6857,6 +6933,8 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
     }
     data_model.is_MTSP = true;  //默认是  false    所以在  TSP  上不用修改。
     data_model.Allocation_strategy = allocation_strategy_;
+    data_model.robot_ids = robot_ids_sorted;
+    data_model.current_robot_id = cur_robot_id_;
     tsp_solver_ns::TSPSolver tsp_solver(data_model);
     tsp_solver.Solve();
     tsp_solver.getSolutionNodeIndex(node_index, false);  //
@@ -6901,6 +6979,24 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
     //           << "\033[1;32m"
     //           << "做 Mdvrp"
     //           << "\033[0m" << std::endl;
+  }
+
+  if (debug)
+  {
+    std::cout << "[GW][MTSP] node_index.size=" << node_index.size() << " mapped_cell_ids=";
+    for (int i = 0; i < node_index.size(); i++)
+    {
+      int idx = node_index[i];
+      if (idx >= 0 && idx < static_cast<int>(exploring_cell_indices.size()))
+      {
+        std::cout << exploring_cell_indices[idx] << " ";
+      }
+      else
+      {
+        std::cout << "(idx:" << idx << ") ";
+      }
+    }
+    std::cout << std::endl;
   }
 
   // Add the first node in the end to make it a loop  最后添加第一个节点，使其成为循环        TSP结果

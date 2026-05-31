@@ -848,6 +848,8 @@ void ViewPointManager::UpdateViewPointVisited(const std::vector<Eigen::Vector3d>
 
 void ViewPointManager::UpdateViewPointVisited(std::shared_ptr<grid_world_ns::GridWorld> const& grid_world)
 {
+  const bool debug = true;
+  int covered_by_others_count = 0;
   for (int i = 0; i < viewpoints_.size(); i++)
   {
     geometry_msgs::msg::Point viewpoint_position = GetViewPointPosition(i, true);
@@ -858,8 +860,16 @@ void ViewPointManager::UpdateViewPointVisited(std::shared_ptr<grid_world_ns::Gri
       if (cell_status == grid_world_ns::CellStatus::COVERED_BY_OTHERS)
       {
         SetViewPointVisited(i, true, true);
+        if (debug)
+        {
+          covered_by_others_count++;
+        }
       }
     }
+  }
+  if (debug)
+  {
+    std::cout << "[VP] ViewPointVisited from COVERED_BY_OTHERS: " << covered_by_others_count << std::endl;
   }
 }
 

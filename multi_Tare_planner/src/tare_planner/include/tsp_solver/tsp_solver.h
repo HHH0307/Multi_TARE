@@ -22,13 +22,22 @@ class TSPSolver;
 } // namespace tsp_solver_ns
 
 struct tsp_solver_ns::DataModel {
-  std::vector<std::vector<int>> distance_matrix;
-  int num_vehicles = 1;
-  bool is_MTSP=false;
-  std::string Allocation_strategy="Mdvrp";
-  RoutingIndexManager::NodeIndex depot{0};
-  std::vector<std::pair<RoutingIndexManager::NodeIndex, RoutingIndexManager::NodeIndex> > depot_M;   //多个
-  std::vector<std::pair<int,int>> depot_M_other_strategy;//其他策略
+  std::vector<std::vector<int>> distance_matrix;     // 邻接矩阵的距离矩阵
+
+  int num_vehicles = 1;  // 机器人数量
+
+  bool is_MTSP = false;   // 是否为多机器人
+
+  std::string Allocation_strategy = "Mdvrp";  // 探索策略
+
+  RoutingIndexManager::NodeIndex depot{0};    // 机器人起点
+
+  std::vector<std::pair<RoutingIndexManager::NodeIndex, RoutingIndexManager::NodeIndex> > depot_M;   // 多个机器人起点的组合
+
+  std::vector<std::pair<int,int>> depot_M_other_strategy;   // 其他策略
+
+  std::vector<int> robot_ids;  // 与 depot_M 对齐的机器人 ID 列表
+  int current_robot_id = 0;    // 当前机器人 ID
 };
 
 class tsp_solver_ns::TSPSolver {
@@ -39,29 +48,30 @@ private:
 
   std::unique_ptr<RoutingIndexManager> manager_;
   std::unique_ptr<RoutingModel> routing_;
+
   const Assignment *solution_;
 
 public:
   TSPSolver(DataModel data);
   ~TSPSolver() = default;
+
   void Solve();
+
   int getComputationTime();
+
   void getSolutionNodeIndex(std::vector<int> &node_index, bool has_dummy);
+
   double getPathLength();
 
-  bool is_MTSP; //多机器人
+  bool is_MTSP; // 多机器人
 
-  //新增  分配相关
   int TSP_depot; //当前机器人起点
   std::string Allocation_strategy ; //外部传入   探索  策略  
 
   Allocation_strategy_ns::DataModel DataModel_other;
 
-  //添加  多目标, 多机器人的  分配策略
-  //贪婪策略
-  Allocation_strategy_ns::GreedySolver Greedy_Solver;
-  //位置分级
-  Allocation_strategy_ns::MinPosSolver MinPos_Solver;
+  Allocation_strategy_ns::GreedySolver Greedy_Solver;  //贪婪策略
+  Allocation_strategy_ns::MinPosSolver MinPos_Solver;  //位置优先级
 };
 
 #endif // VISUAL_COVERAGE_PLANNER_TSP_SOLVER_H

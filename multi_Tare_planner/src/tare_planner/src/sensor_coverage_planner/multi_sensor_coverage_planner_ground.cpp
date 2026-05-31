@@ -2604,7 +2604,7 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     if (robot_statu_ == grid_world_ns::RobotStatus::Far_planner)  
     {
       GetLookAheadPoint_Globalpath_Far(global_path, lookahead_point_);
-      // RCLCPP_INFO(this->get_logger(), "robot_statu_= Far_planner");
+      RCLCPP_INFO(this->get_logger(), "robot_statu_= Far_planner");
     }
     else  
     {
@@ -2612,11 +2612,11 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
       {
         is_exploring_ = true;
         lookahead_point_update_ = GetLookAheadPoint_Localpath(local_path_sort, lookahead_point_);
-        // RCLCPP_INFO(this->get_logger(), "robot_statu_= Exploring");
+        RCLCPP_INFO(this->get_logger(), "robot_statu_= Exploring");
       }
       else
       {
-        // RCLCPP_INFO(this->get_logger(), "robot_statu_= Global_tsp || Return_home");
+        RCLCPP_INFO(this->get_logger(), "robot_statu_= Global_tsp || Return_home");
         
         exploration_path_ns::ExplorationPath global_local_path;
         bool use_local = false;
@@ -2628,19 +2628,6 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
           lookahead_point_update_ = GetLookAheadPoint(exploration_path_, global_path, lookahead_point_);
         }
       }
-    }
-    bool debug = false;
-    if (debug)
-    {
-      RCLCPP_DEBUG(this->get_logger(), "====== wagpoint ======");
-      RCLCPP_DEBUG(this->get_logger(), "====== x= %f", lookahead_point_.x());
-      RCLCPP_DEBUG(this->get_logger(), "====== y= %f", lookahead_point_.y());
-      RCLCPP_DEBUG(this->get_logger(), "====== z= %f", lookahead_point_.z());
-      RCLCPP_DEBUG(this->get_logger(), "====== 当前位置点 ======");
-      RCLCPP_DEBUG(this->get_logger(), "======cur_posisition =");
-      RCLCPP_DEBUG(this->get_logger(), "====== x= %f", robot_position_.x);
-      RCLCPP_DEBUG(this->get_logger(), "====== y= %f", robot_position_.y);
-      RCLCPP_DEBUG(this->get_logger(), "====== z= %f", robot_position_.z);
     }
     
     PublishWaypoint();  // 发布 waypint
