@@ -2604,7 +2604,7 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     if (robot_statu_ == grid_world_ns::RobotStatus::Far_planner)  
     {
       GetLookAheadPoint_Globalpath_Far(global_path, lookahead_point_);
-      RCLCPP_INFO(this->get_logger(), "robot_statu_= Far_planner");
+      // RCLCPP_INFO(this->get_logger(), "robot_statu_= Far_planner");
     }
     else  
     {
@@ -2612,11 +2612,11 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
       {
         is_exploring_ = true;
         lookahead_point_update_ = GetLookAheadPoint_Localpath(local_path_sort, lookahead_point_);
-        RCLCPP_INFO(this->get_logger(), "robot_statu_= Exploring");
+        // RCLCPP_INFO(this->get_logger(), "robot_statu_= Exploring");
       }
       else
       {
-        RCLCPP_INFO(this->get_logger(), "robot_statu_= Global_tsp || Return_home");
+        // RCLCPP_INFO(this->get_logger(), "robot_statu_= Global_tsp || Return_home");
         
         exploration_path_ns::ExplorationPath global_local_path;
         bool use_local = false;

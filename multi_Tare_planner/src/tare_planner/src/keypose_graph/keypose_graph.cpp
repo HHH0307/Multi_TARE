@@ -883,7 +883,6 @@ int KeyposeGraph::AddKeyposeNode(const nav_msgs::msg::Odometry& keypose, const p
               bool in_collision = false;
               for (int i = 0; i < check_point_num; i++)
               {
-                // std::cout << "checking the " << i << " collision point" << std::endl;
                 double check_point_x =
                     current_keypose_position_.x + kAddEdgeCollisionCheckResolution * i * diff_x / neighbor_node_dist;
                 double check_point_y =

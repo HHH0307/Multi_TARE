@@ -338,7 +338,6 @@ public:
                                            std::vector<bool> constraints);
     void GetClosestNodeIndAndDistance(const geometry_msgs::msg::Point& point, int& node_ind, double& dist);
     void UpdateNodes();
-    bool GetCloseConnectNodeMtspGraph(geometry_msgs::msg::Point& robot_pose,int& graph_index,double& dist,double& addthr);
 
     void GetClosestConnectedNodeIndAndDistance(const geometry_msgs::msg::Point& point, int& node_ind, double& dist);
 };
@@ -769,160 +768,18 @@ public:
     void GetUpdateNeighbor_NewGridWorldCellStatus_(std::vector<int>&  UpdateNeighbor_GridWorldCellStatus_code_);
     //添加函数  更新网格世界单元状态  从其他机器人上面
     void UpdateGridWorldCellFromOtherRobots(std::map<int,int>& Update_Grid_World_ID_and_Statu_);
-    //添加函数  编码 做MTSP的子图 
-    std::vector<double> GetMtspSubgrapherCode(std::vector<geometry_msgs::msg::Point>& exploring_cell_positions ,std::vector<std::vector<int>>&  distance_matrix);
-    //添加函数   融合  MTSP子图  得到求解    全局  MTSP图   的距离矩阵，结点ID集，结点位置数据集     传入其他子图
-    bool GetGlobalMtspGrapher_indices_positions_dismatrix(std::vector<int>& exploring_cell_indices,
-    std::vector<geometry_msgs::msg::Point>& exploring_cell_positions,
-     std::vector<std::vector<int>>& distance_matrix,
-     std::vector<int>& exploring_cell_indices_MTSP,  //   做MTSP  的  探索单元  ID
-     std::vector<geometry_msgs::msg::Point>& exploring_cell_positions_MTSP,  //做 MTSP  探索单元  ID
-     std::vector<std::vector<int>>& distance_matrix_MTSP,  //  做MTSP 的距离矩阵
-     std::vector<int>& robot_position_id_on_exploring_cell_positions_MTSP,
-     std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-     const std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph);
-
-    //添加函数  融合MTSP子图   ，全局MTSP图    2代
-    bool GetGlobalMtspGrapher_FusedGrapher(std::vector<int>& exploring_cell_indices,
-    std::vector<geometry_msgs::msg::Point>& exploring_cell_positions,
-     std::vector<std::vector<int>>& distance_matrix,
-     std::vector<int>& exploring_cell_indices_MTSP,  //   做MTSP  的  探索单元  ID
-     std::vector<geometry_msgs::msg::Point>& exploring_cell_positions_MTSP,  //做 MTSP  探索单元  ID
-     std::vector<std::vector<int>>& distance_matrix_MTSP,  //  做MTSP 的距离矩阵
-     std::vector<int>& robot_position_id_on_exploring_cell_positions_MTSP,
-     std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-     const std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph,
-     fuse_grapher Fuse_Grapher_);
-
-    //修改 新增
-    bool GetGlobalMtspGrapher_FusedGrapher_pro(std::vector<int>& exploring_cell_indices,
-    std::vector<geometry_msgs::msg::Point>& exploring_cell_positions,
-     std::vector<std::vector<int>>& distance_matrix,
-     std::vector<int>& exploring_cell_indices_MTSP,  //   做MTSP  的  探索单元  ID
-     std::vector<geometry_msgs::msg::Point>& exploring_cell_positions_MTSP,  //做 MTSP  探索单元  ID
-     std::vector<std::vector<int>>& distance_matrix_MTSP,  //  做MTSP 的距离矩阵
-     std::vector<int>& robot_position_id_on_exploring_cell_positions_MTSP,
-     std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-     const std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph,
-     fuse_grapher& Fuse_Grapher_,
-     std::vector<int>& positions_fuse_grapher_node_id);
-
-    //修改融图逻辑
-    bool GetGlobalMtspGrapher_FusedGrapher_max(std::vector<int>& exploring_cell_indices,
-    std::vector<geometry_msgs::msg::Point>& exploring_cell_positions,
-     std::vector<std::vector<int>>& distance_matrix,
-     std::vector<int>& exploring_cell_indices_MTSP,  //   做MTSP  的  探索单元  ID
-     std::vector<geometry_msgs::msg::Point>& exploring_cell_positions_MTSP,  //做 MTSP  探索单元  ID
-     std::vector<std::vector<int>>& distance_matrix_MTSP,  //  做MTSP 的距离矩阵
-     std::vector<int>& robot_position_id_on_exploring_cell_positions_MTSP,
-     std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-     const std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph,
-     fuse_grapher& Fuse_Grapher_,
-     std::vector<int>& positions_fuse_grapher_node_id);
-
-    //添加函数     传入    外部已探索点位置， 外部未探索点位置，本地探索点集，返回本地探索点集ID
-    int ReplaceEdge_GetLocalExploringNodeId_and_Distance(geometry_msgs::msg::Point& on_keyposegrapher ,    //外部已探索点
-        geometry_msgs::msg::Point & out_keyposegrapher ,  //外部传入未探索点
-        std::vector<geometry_msgs::msg::Point>& exploring_positions ,//本地探索点
-        double& distance_,
-        const std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph);  //两点距离
     
     //添加函数  计算  融合图（连通图）中 两点 之间的最短距离
     double GetShortestPath_Fuse_Grapher(fuse_grapher& Fuse_Graoher_,int start_id, int target_id);
-
-    //添加函数  计算融合图 两点的  路径 编号
-    std::vector<int> GetShortestPath_Fuse_Grapher_pro(fuse_grapher& Fuse_Graoher_,int start_id, int target_id);
     
     //添加函数  判断局部路径规划   类型
     bool GetLocalPlanningType(const exploration_path_ns::ExplorationPath& global_path);
     
-    //添加函数  将路径  添加到  keyposegrapher 图中
-    bool UpDateIntermediate2GoalPath(const nav_msgs::msg::Path& this_path, std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph );
-
     //外部可访问
     exploration_path_ns::ExplorationPath   last_global_goal_path_;//融合图所做的目标，只要融合成功，且 融合目标还是探索状态   选用上一次的全局目标。
     
     //添加函数返回当前机器人状态
     grid_world_ns::RobotStatus GetRobotStatu();
-    
-    void GetSubgraph( tare_planner::msg::Subgraph& pub_subgraph);
-
-    //添加函数 得到本机器人的邻接子网格图
-
-    //添加函数   邻接子网格  更新    传入各个机器人的网格图
-    void UpdateMTSPgridgraph(tare_planner::msg::Subgraph& cur_subgraph,
-    std::map<int,std::map<int, tare_planner::msg::Subnode>>&  robot_cell_subnode_,
-    std::map<int,std::vector<geometry_msgs::msg::Point>>& other_robot_history_position_,
-    int robot_num,
-    double kAddNodeMinDist,
-    double kAddEdgeConnectDistThr,
-    const std::unique_ptr<planning_env_ns::PlanningEnv>& planning_env_,
-    double kAddEdgeCollisionCheckResolution,
-    const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager_);
-
-    //添加函数
-    void ConnectRobotToNeighborCellGraphNode(int robot_index_MTSP_grid_graph,
-                                                                                              double kAddEdgeConnectDistThr,
-                                                                                              const std::unique_ptr<planning_env_ns::PlanningEnv>& planning_env_,
-                                                                                              double kAddEdgeCollisionCheckResolution);
-    
-    //添加激进的连边  _local_pro
-    void ConnectRobotToNeighborCellGraphNode_local_pro(int robot_index_MTSP_grid_graph,
-                                                                                              double kAddEdgeConnectDistThr,
-                                                                                              const std::unique_ptr<planning_env_ns::PlanningEnv>& planning_env_,
-                                                                                              double kAddEdgeCollisionCheckResolution,
-                                                                                              const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager_);
-    
-    //添加函数
-    void IsAddExtraEdge(int from_node_ind,
-                                        int to_node_ind,
-                                        double MinDistThr,
-                                        const std::unique_ptr<planning_env_ns::PlanningEnv>& planning_env_,
-                                        double kAddEdgeCollisionCheckResolution);
-    
-    //  添加
-    void IsAddExtraEdge_local_pro(int from_node_ind,
-                                        int to_node_ind,
-                                        double MinDistThr,
-                                        const std::unique_ptr<planning_env_ns::PlanningEnv>& planning_env_,
-                                        double kAddEdgeCollisionCheckResolution,
-                                        const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager_);
-    
-    //给  MTSP_grid_graph  新增可视化
-    void GetGridGraphMarker(visualization_msgs::msg::Marker& node_marker, visualization_msgs::msg::Marker& edge_marker);
-
-    //可视化
-    void GetVisualizationGridGraphCloud(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud);
-    
-    // MTSP_grid_graph   检测碰撞
-    void CheckGridGraphLocalCollision(const geometry_msgs::msg::Point& robot_position,
-                                                      const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager);
-    
-    // MTSP_grid_graph   检测连通性
-    void CheckGridGraphConnectivity(const geometry_msgs::msg::Point& robot_position);
-
-    //MTSP_grid_graph 获得  做mtsp 信息
-    bool GetMtspGridGraphInformation(std::vector<int>& exploring_cell_indices,
-    std::vector<geometry_msgs::msg::Point>& exploring_cell_positions,
-     std::vector<std::vector<int>>& distance_matrix,
-     std::vector<int>& exploring_cell_indices_MTSP,  //   做MTSP  的  探索单元  ID
-     std::vector<geometry_msgs::msg::Point>& exploring_cell_positions_MTSP,  //做 MTSP  探索单元  ID
-     std::vector<std::vector<int>>& distance_matrix_MTSP,  //  做MTSP 的距离矩阵
-     std::vector<int>& robot_position_id_on_exploring_cell_positions_MTSP,
-     std::map<int,std::vector<double>>& MTSP_subgrapher_map_,
-     const std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph,
-     std::vector<int>& positions_fuse_grapher_node_id);
-
-    //添加函数  计算  MTSP_grid_graph中 两点 之间的最短距离
-    double GetShortestPath_MTSP_grid_graph(int start_id, int target_id);
-
-    //添加函数  计算MTSP_grid_graph   两点的  路径 编号
-    std::vector<int> GetShortestPath_MTSP_grid_graph_path(int start_id, int target_id);
-    
-    //添加函数  选择  导航点  MTSP_grid_graph  的结点中 
-    int GetNavigationIndexFromMtspGridGraph(std::vector<int>&path_node_index, const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager,
-                                                                                          std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph,
-                                                                                          bool& use_Navigation_node);
 
     //添加函数   获取靠近局部规划框的  探索子网格到机器人的路径
     void Get_subgrid_paths(std::vector<exploration_path_ns::ExplorationPath>& near_localcoverage_subgrid_paths,

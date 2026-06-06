@@ -867,10 +867,6 @@ void ViewPointManager::UpdateViewPointVisited(std::shared_ptr<grid_world_ns::Gri
       }
     }
   }
-  if (debug)
-  {
-    std::cout << "[VP] ViewPointVisited from COVERED_BY_OTHERS: " << covered_by_others_count << std::endl;
-  }
 }
 
 void ViewPointManager::SetViewPointHeightWithTerrain(const pcl::PointCloud<pcl::PointXYZI>::Ptr& terrain_cloud,

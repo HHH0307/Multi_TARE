@@ -105,7 +105,7 @@ void TSPSolver::getSolutionNodeIndex(std::vector<int> &node_index, bool has_dumm
       if(!node_index_Greedy.empty())
       {
           node_index.push_back(node_index_Greedy[0]);
-          std::cout<<"Greedy 分配成功"<<std::endl;
+          // std::cout<<"Greedy 分配成功"<<std::endl;
       }
       return ;
   }else if(is_MTSP && Allocation_strategy == "MinPos")
@@ -117,7 +117,7 @@ void TSPSolver::getSolutionNodeIndex(std::vector<int> &node_index, bool has_dumm
       if(!node_index_MinPos.empty())
       {
           node_index.push_back(node_index_MinPos[0]);
-          std::cout<<"MinPos 分配成功"<<std::endl;
+          // std::cout<<"MinPos 分配成功"<<std::endl;
       }
       return ;
   }
@@ -128,20 +128,14 @@ void TSPSolver::getSolutionNodeIndex(std::vector<int> &node_index, bool has_dumm
     node_index.push_back(static_cast<int>(manager_->IndexToNode(index).value()));
     index = solution_->Value(routing_->NextVar(index));
   }
-  // push back the end node index
-  //       node_index.push_back(end_index);
   if (has_dummy) {
     int dummy_node_index = data_.distance_matrix.size() - 1;
     if (node_index[1] == dummy_node_index) {
-      // delete dummy node
       node_index.erase(node_index.begin() + 1);
-      // push the start node to the end
       node_index.push_back(node_index[0]);
-      // remove the start node at the begining
       node_index.erase(node_index.begin());
-      // reverse the whole array
       std::reverse(node_index.begin(), node_index.end());
-    } else // the last node is dummy node
+    } else 
     {
       node_index.pop_back();
     }

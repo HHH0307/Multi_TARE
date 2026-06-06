@@ -1169,10 +1169,8 @@ void fringe_search(std::vector<fringe_search_node>& Nodes,int from_idx, int to_i
   start->fringe_index = Fringe.begin();  //初始化  在 list  Fringe  的序号
   bool found = false;  //初始化  没有找到
   double f_limit = start->f; // f  最小值    0+h(start,goal)
- //std::cout<<"fringe search 初始化成功"<<std::endl;
   while (!found && !Fringe.empty()) {
     double next_f_limit = DBL_MAX;//next_f =  DBL_MAX
-    //std::cout<<"1"<<std::endl;
     for (auto ff = Fringe.begin(); ff != Fringe.end();) {  //从  Fringe  的第一个到  最后一个
       fringe_search_node* expand_me = *ff;  //当前的  边缘
       // is this node outside the current depth? 该节点是否超出当前深度？
@@ -1184,26 +1182,20 @@ void fringe_search(std::vector<fringe_search_node>& Nodes,int from_idx, int to_i
         ++ ff;//  查询下一个
         continue; // skip this one (for now)  跳过这一次
       }
-     // std::cout<<"2"<<std::endl;
       if (expand_me == goal) {  //当前是目标点 
         found = true;  //找到目标点
         break; //结束
       }
-      //std::cout<<"3"<<std::endl;
      //++ stats.nodes_expanded;  //记录状态的 节点扩展
       expand_me->expand(); // 拓展 问题  id  与计算无关
-      //std::cout<<"4"<<std::endl;
       // Relax the neighbors and put them on the fringe AFTER `expand_me'  放松  邻接点，在“扩展我”之后把他们放入边缘fringe
       for (auto& add_me_index: expand_me->neighbors) {  //当前点的  邻接点
          fringe_search_node* add_me=&Nodes[add_me_index];
-         //std::cout<<"查询  closed()"<<std::endl;
         if (add_me->closed())//判定是否跳过当前问题
         {
           continue;
         }
-        //std::cout<<"查询  closed()成功"<<std::endl;
         double g = expand_me->g + GetCost(expand_me, add_me); //计算起点到  add_me  的成本g
-        //std::cout<<"5"<<std::endl;
         if (!add_me->open) {// add_me 不在open list上  (一般第一次)
           add_me->open = true; //放入 open list 种
 

@@ -464,12 +464,9 @@ void MergerGraph::CheckConnectivityIkdtree(const geometry_msgs::msg::Point& robo
       std::vector<bool> constraint(node_num, true);
       GetConnectedNodeIndices(robot_node_ind, connected_node_indices, constraint);  //得到与  robot_node_ind  相连的  ID
       SetConnectedNodeIndices(connected_node_indices);
-      // std::cout << "connected_node_indices  = " << connected_node_indices.size() << std::endl;
     }
     else
     {
-    //   ROS_ERROR_STREAM("KeyposeGraph::CheckConnectivity: Cannot get closest robot node ind "
-    //                    << robot_node_ind);  //不能得到最近的机器人结点 ID
       RCLCPP_ERROR_STREAM(node_->get_logger(), "KeyposeGraph::CheckConnectivity: Cannot get closest robot node ind " << robot_node_ind);
     }
   }
