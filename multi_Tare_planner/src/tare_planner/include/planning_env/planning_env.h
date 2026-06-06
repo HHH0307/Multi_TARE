@@ -18,6 +18,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/polygon.hpp>
+#include <geometry_msgs/msg/polygon_stamped.hpp>
 // PCL
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
@@ -313,6 +314,8 @@ public:
 
 private:
   PlanningEnvParameters parameters_;
+  rclcpp::Node::SharedPtr nh_;
+  std::string world_frame_id_;
 
   std::vector<typename PlannerCloudType::Ptr> keypose_cloud_stack_;
   std::vector<typename PlannerCloudType::Ptr> vertical_surface_cloud_stack_;
@@ -356,6 +359,11 @@ private:
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> uncovered_frontier_cloud_;
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> frontier_cloud_;
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> filtered_frontier_cloud_;
+  std::shared_ptr<misc_utils_ns::Marker> explored_boundary_marker_;
+  std::shared_ptr<misc_utils_ns::Marker> explored_boundary_history_marker_;
+  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr explored_boundary_pub_;
+  geometry_msgs::msg::PolygonStamped explored_boundary_msg_;
+  pointcloud_utils_ns::PointCloudDownsizer<pcl::PointXYZI> explored_boundary_downsizer_;
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> occupied_cloud_;
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> free_cloud_;
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> unknown_cloud_;
@@ -367,4 +375,5 @@ private:
 
   void UpdateCollisionCloud();
   void UpdateFrontiers();
+  void UpdateExploredBoundary();
 };

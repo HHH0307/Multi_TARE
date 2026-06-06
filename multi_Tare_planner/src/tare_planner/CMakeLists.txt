@@ -29,6 +29,7 @@ find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(pcl_ros REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(rosidl_typesupport_cpp REQUIRED)
 
@@ -49,6 +50,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
  include_directories(
   ${PCL_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
   ${CMAKE_CURRENT_BINARY_DIR}/rosidl_generator_cpp
   include
   or-tools/include
@@ -120,7 +122,7 @@ target_link_libraries(rolling_occupancy_grid ${PROJECT_NAME}__rosidl_typesupport
 
 add_library(planning_env STATIC src/planning_env/planning_env.cpp)
 ament_target_dependencies(planning_env rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
-target_link_libraries(planning_env ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} rolling_occupancy_grid pointcloud_manager lidar_model viewpoint_manager pointcloud_utils misc_utils)
+target_link_libraries(planning_env ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS} rolling_occupancy_grid pointcloud_manager lidar_model viewpoint_manager pointcloud_utils misc_utils)
 
 add_library(exploration_path src/exploration_path/exploration_path.cpp)
 ament_target_dependencies(exploration_path rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)

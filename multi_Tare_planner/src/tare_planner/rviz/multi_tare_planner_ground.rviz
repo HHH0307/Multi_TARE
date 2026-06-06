@@ -6,10 +6,9 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /robot_11/Global1
+        - /robot_11
         - /robot_11/Global1/OverMap1
         - /robot_11/Global1/ExploreAreas1
-        - /robot_11/Local1
         - /robot_11/Local1/local_planning_horizon1
         - /robot_11/Local1/viewpoint_vis_cloud1
         - /robot_11/Local1/lookahead_point_cloud1
@@ -24,15 +23,12 @@ Panels:
         - /robot_31/Global1
         - /robot_31/Local1
         - /robot_31/Local1/local_path1
-      Splitter Ratio: 0.5361930131912231
+      Splitter Ratio: 0.6858513355255127
     Tree Height: 865
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
-    Expanded:
-      - /robot_1_Waypoint1
-      - /robot_2_Waypoint1
-      - /robot_3_Waypoint1
+    Expanded: ~
     Name: Tool Properties
     Splitter Ratio: 0.5886790156364441
   - Class: rviz_common/Views
@@ -183,7 +179,7 @@ Visualization Manager:
               Enabled: true
               Name: grid_world_marker
               Namespaces:
-                "": true
+                {}
               Topic:
                 Depth: 5
                 Durability Policy: Volatile
@@ -369,7 +365,7 @@ Visualization Manager:
               Enabled: true
               Name: local_planning_horizon
               Namespaces:
-                "": true
+                {}
               Topic:
                 Depth: 5
                 Durability Policy: Volatile
@@ -463,7 +459,7 @@ Visualization Manager:
               Max Color: 255; 255; 255
               Max Intensity: 1
               Min Color: 0; 0; 0
-              Min Intensity: 0
+              Min Intensity: 1
               Name: lookahead_point_cloud
               Position Transformer: XYZ
               Selectable: true
@@ -655,7 +651,7 @@ Visualization Manager:
               Value: true
           Enabled: true
           Name: Local
-      Enabled: true
+      Enabled: false
       Name: robot_1
     - Class: rviz_common/Group
       Displays:
@@ -852,7 +848,7 @@ Visualization Manager:
               Enabled: true
               Name: exploring_subspaces
               Namespaces:
-                "": true
+                {}
               Topic:
                 Depth: 5
                 Durability Policy: Volatile
@@ -978,7 +974,7 @@ Visualization Manager:
               Enabled: true
               Name: local_planning_horizon
               Namespaces:
-                "": true
+                {}
               Topic:
                 Depth: 5
                 Durability Policy: Volatile
@@ -1072,7 +1068,7 @@ Visualization Manager:
               Max Color: 255; 255; 255
               Max Intensity: 1
               Min Color: 0; 0; 0
-              Min Intensity: 0
+              Min Intensity: 1
               Name: lookahead_point_cloud
               Position Transformer: XYZ
               Selectable: true
@@ -1264,7 +1260,7 @@ Visualization Manager:
               Value: true
           Enabled: true
           Name: Local
-      Enabled: true
+      Enabled: false
       Name: robot_2
     - Class: rviz_common/Group
       Displays:
@@ -1587,7 +1583,7 @@ Visualization Manager:
               Enabled: true
               Name: local_planning_horizon
               Namespaces:
-                "": true
+                {}
               Topic:
                 Depth: 5
                 Durability Policy: Volatile
@@ -1873,7 +1869,7 @@ Visualization Manager:
               Value: true
           Enabled: true
           Name: Local
-      Enabled: true
+      Enabled: false
       Name: robot_3
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -1922,6 +1918,84 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /robot_1/sensor_coverage_planner/merger_graph_edge_marker
       Value: false
+    - Alpha: 1
+      Class: rviz_default_plugins/Polygon
+      Color: 25; 255; 0
+      Enabled: true
+      Name: robot_1_Polygon_boundary
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_1/sensor_coverage_planner/explored_boundary
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: robot_1_Marker_boundary
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_1/sensor_coverage_planner/explored_boundary_marker
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/Polygon
+      Color: 25; 255; 0
+      Enabled: true
+      Name: robot_2_Polygon_boundary
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_2/sensor_coverage_planner/explored_boundary
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: robot_2_Marker_boundary
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_2/sensor_coverage_planner/explored_boundary_marker
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/Polygon
+      Color: 25; 255; 0
+      Enabled: true
+      Name: robot_3_Polygon_boundary
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_3/sensor_coverage_planner/explored_boundary
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: robot_3_Marker_boundary
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_3/sensor_coverage_planner/explored_boundary_marker
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -1958,16 +2032,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 153.4790802001953
+      Distance: 526.3281860351562
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 60.586280822753906
-        Y: 19.568029403686523
-        Z: 5.807905197143555
+        X: 46.29198455810547
+        Y: 18.983783721923828
+        Z: 5.7935919761657715
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -1984,7 +2058,7 @@ Window Geometry:
   Height: 1016
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001a30000039efc0200000008fb0000001200530065006c0065006300740069006f006e0000000016000001320000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000039e000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000016f0000039efc0200000006fb0000001a0072006f0062006f0074005f0031005f0049006d006100670065010000003d000001320000002800fffffffb0000001a0072006f0062006f0074005f0032005f0049006d0061006700650100000175000001420000002800fffffffb0000001a0072006f0062006f0074005f0033005f0049006d00610067006501000002bd0000011e0000002800fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000016000003cc000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000a000000003efc0100000002fb0000000800540069006d0065000000000000000a00000002fb00fffffffb0000000800540069006d00650100000000000004500000000000000000000004620000039e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001c20000039efc0200000008fb0000001200530065006c0065006300740069006f006e0000000016000001320000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000039e000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000016f0000039efc0200000006fb0000001a0072006f0062006f0074005f0031005f0049006d006100670065000000003d0000039e0000002800fffffffb0000001a0072006f0062006f0074005f0032005f0049006d006100670065000000003d0000039e0000002800fffffffb0000001a0072006f0062006f0074005f0033005f0049006d00610067006500000002bd0000011e0000002800fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000016000003cc000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000a000000003efc0100000002fb0000000800540069006d0065000000000000000a00000002fb00fffffffb0000000800540069006d00650100000000000004500000000000000000000005b80000039e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -1994,8 +2068,8 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 0
-  Y: 268
+  X: 184
+  Y: 324
   robot_1_Image:
     collapsed: false
   robot_2_Image:

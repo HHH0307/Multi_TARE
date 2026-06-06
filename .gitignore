@@ -11,3 +11,5 @@ multi_Tare_planner/log/*
 
 *.md
 *.txt
+
+/home/hqy/Multi_TARE/far_planner/*

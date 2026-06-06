@@ -12,6 +12,13 @@
 #include <planning_env/planning_env.h>
 #include <viewpoint_manager/viewpoint_manager.h>
 
+#include <algorithm>
+#include <utility>
+
+#include <pcl/surface/concave_hull.h>
+#include <pcl/surface/convex_hull.h>
+#include <opencv2/opencv.hpp>
+
 namespace planning_env_ns
 {
 void PlanningEnvParameters::ReadParameters(rclcpp::Node::SharedPtr nh)
@@ -49,6 +56,8 @@ PlanningEnv::PlanningEnv(rclcpp::Node::SharedPtr nh, std::string world_frame_id)
   , vertical_surface_extractor_()
   , vertical_frontier_extractor_()
   , robot_position_update_(false)
+  , nh_(nh)
+  , world_frame_id_(std::move(world_frame_id))
 {
   parameters_.ReadParameters(nh);
 
@@ -107,6 +116,16 @@ PlanningEnv::PlanningEnv(rclcpp::Node::SharedPtr nh, std::string world_frame_id)
       std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(nh, "frontier_cloud", world_frame_id); // 前沿点云
   filtered_frontier_cloud_ =
       std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(nh, "filtered_frontier_cloud", world_frame_id); // 过滤前沿点云
+    explored_boundary_marker_ = std::make_shared<misc_utils_ns::Marker>(nh, "explored_boundary_marker", world_frame_id_);
+    explored_boundary_marker_->SetType(visualization_msgs::msg::Marker::LINE_LIST);
+    explored_boundary_marker_->SetScale(0.05, 0.0, 0.0);
+    explored_boundary_marker_->SetColorRGBA(0.15, 0.75, 1.0, 0.95);
+    explored_boundary_history_marker_ = std::make_shared<misc_utils_ns::Marker>(nh, "explored_boundary_history_marker", world_frame_id_);
+    explored_boundary_history_marker_->SetType(visualization_msgs::msg::Marker::LINE_LIST);
+    explored_boundary_history_marker_->SetScale(0.03, 0.0, 0.0);
+    explored_boundary_history_marker_->SetColorRGBA(0.15, 0.75, 1.0, 0.30);
+    explored_boundary_pub_ = nh->create_publisher<geometry_msgs::msg::PolygonStamped>("explored_boundary", 2);
+    explored_boundary_msg_.header.frame_id = world_frame_id_;
   occupied_cloud_ =
       std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(nh, "occupied_cloud", world_frame_id); // 占用点云
   free_cloud_ = std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(nh, "free_cloud", world_frame_id); // 空闲点云
@@ -359,6 +378,8 @@ void PlanningEnv::UpdateCoveredArea(const lidar_model_ns::LiDARModel& robot_view
       pointcloud_manager_->UpdateCoveredCloudPoints(cloud_idx, cloud_point_idx);
     }
   }
+
+  UpdateExploredBoundary();
 }
 
 void PlanningEnv::GetUncoveredArea(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager,
@@ -456,6 +477,199 @@ void PlanningEnv::PublishUncoveredCloud()
 void PlanningEnv::PublishUncoveredFrontierCloud()
 {
   uncovered_frontier_cloud_->Publish();
+}
+
+void PlanningEnv::UpdateExploredBoundary()
+{
+  pcl::PointCloud<pcl::PointXYZI>::Ptr explored_points(new pcl::PointCloud<pcl::PointXYZI>());
+  explored_points->clear();
+  for (const auto& point : planner_cloud_->cloud_->points)
+  {
+    if (point.g <= 0)
+    {
+      continue;
+    }
+
+    pcl::PointXYZI explored_point;
+    explored_point.x = point.x;
+    explored_point.y = point.y;
+    explored_point.z = 0.0;
+    explored_point.intensity = point.g;
+    explored_points->points.push_back(explored_point);
+  }
+
+  if (explored_points->points.size() < 3)
+  {
+    return;
+  }
+
+  explored_boundary_downsizer_.Downsize(explored_points, parameters_.kSurfaceCloudDwzLeafSize,
+                                       parameters_.kSurfaceCloudDwzLeafSize, parameters_.kSurfaceCloudDwzLeafSize);
+
+  if (explored_points->points.size() < 3)
+  {
+    return;
+  }
+
+  // Use image-projection based contour extraction (inspired by far_planner::ContourDetector)
+  // Build a 2D occupancy image from explored points, find contours with OpenCV,
+  // convert contours back to world coordinates and publish as polygon/line markers.
+
+  std::vector<geometry_msgs::msg::Point> current_line_points;
+  std::vector<geometry_msgs::msg::Point> history_line_points;
+  current_line_points.reserve(explored_points->points.size() * 2);
+  history_line_points.reserve(explored_points->points.size() * 2);
+  std::vector<geometry_msgs::msg::Point32> current_polygon_points;
+
+  // Compute grid bounds
+  float min_x = std::numeric_limits<float>::infinity();
+  float max_x = -std::numeric_limits<float>::infinity();
+  float min_y = std::numeric_limits<float>::infinity();
+  float max_y = -std::numeric_limits<float>::infinity();
+  for (const auto &p : explored_points->points) {
+    if (p.x < min_x) min_x = p.x;
+    if (p.x > max_x) max_x = p.x;
+    if (p.y < min_y) min_y = p.y;
+    if (p.y > max_y) max_y = p.y;
+  }
+  // Add small margin
+  const float margin = std::max(0.5f, static_cast<float>(parameters_.kSurfaceCloudDwzLeafSize * 2.0));
+  min_x -= margin; max_x += margin; min_y -= margin; max_y += margin;
+
+  const float voxel = static_cast<float>(std::max(0.01, parameters_.kSurfaceCloudDwzLeafSize));
+  int cols = static_cast<int>(std::ceil((max_x - min_x) / voxel));
+  int rows = static_cast<int>(std::ceil((max_y - min_y) / voxel));
+  // clamp image size to avoid pathological cases
+  const int MAX_DIM = 2048;
+  if (cols <= 0 || rows <= 0 || cols > MAX_DIM || rows > MAX_DIM) {
+    return;
+  }
+
+  cv::Mat img = cv::Mat::zeros(rows, cols, CV_32FC1);
+  for (const auto &pt : explored_points->points) {
+    int c = static_cast<int>((pt.x - min_x) / (max_x - min_x + 1e-6) * (cols - 1));
+    int r = static_cast<int>((max_y - pt.y) / (max_y - min_y + 1e-6) * (rows - 1));
+    if (r >= 0 && r < rows && c >= 0 && c < cols) {
+      img.at<float>(r, c) += 1.0f;
+    }
+  }
+
+  // Threshold to binary image
+  cv::Mat bin;
+  cv::threshold(img, bin, 0.5, 255, cv::THRESH_BINARY);
+  bin.convertTo(bin, CV_8UC1);
+
+  // Optionally resize/blur to remove noise (kept small)
+  // Find contours
+  std::vector<std::vector<cv::Point>> raw_contours;
+  std::vector<cv::Vec4i> hierarchy;
+  cv::findContours(bin, raw_contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+  if (raw_contours.empty()) {
+    return;
+  }
+
+  // Convert contours to world coords and build polygon/line lists
+  for (const auto &cont : raw_contours) {
+    if (cont.size() < 3) continue;
+    // Optionally simplify contour
+    std::vector<cv::Point> approx;
+    double eps = std::max(1.0, voxel * 1.0) ;
+    cv::approxPolyDP(cont, approx, eps, true);
+    if (approx.size() < 3) continue;
+
+    std::vector<geometry_msgs::msg::Point32> poly32;
+    poly32.reserve(approx.size());
+    for (size_t i = 0; i < approx.size(); ++i) {
+      int r = approx[i].y;
+      int c = approx[i].x;
+      geometry_msgs::msg::Point32 wp;
+      wp.x = min_x + (static_cast<float>(c) + 0.5f) * voxel;
+      wp.y = max_y - (static_cast<float>(r) + 0.5f) * voxel;
+      wp.z = 0.0f;
+      poly32.push_back(wp);
+    }
+
+    // build lines
+    for (size_t i = 0; i < poly32.size(); ++i) {
+      const auto &s = poly32[i];
+      const auto &e = poly32[(i + 1) % poly32.size()];
+      geometry_msgs::msg::Point sp, ep;
+      sp.x = s.x; sp.y = s.y; sp.z = 0.0;
+      ep.x = e.x; ep.y = e.y; ep.z = 0.0;
+      current_line_points.push_back(sp);
+      current_line_points.push_back(ep);
+      history_line_points.push_back(sp);
+      history_line_points.push_back(ep);
+    }
+
+    // if we don't have a polygon yet, take the largest contour as current polygon
+    if (poly32.size() > current_polygon_points.size()) {
+      current_polygon_points = poly32;
+    }
+  }
+
+  auto append_hull = [&](const pcl::PointCloud<pcl::PointXYZI>::Ptr& hull_points, bool use_as_current_polygon) {
+    if (hull_points->points.size() < 3)
+    {
+      return;
+    }
+
+    if (use_as_current_polygon)
+    {
+      current_polygon_points.clear();
+      current_polygon_points.reserve(hull_points->points.size());
+      for (const auto& point : hull_points->points)
+      {
+        geometry_msgs::msg::Point32 boundary_point32;
+        boundary_point32.x = static_cast<float>(point.x);
+        boundary_point32.y = static_cast<float>(point.y);
+        boundary_point32.z = 0.0F;
+        current_polygon_points.push_back(boundary_point32);
+      }
+    }
+
+    for (std::size_t i = 0; i < hull_points->points.size(); ++i)
+    {
+      const auto& start = hull_points->points[i];
+      const auto& end = hull_points->points[(i + 1) % hull_points->points.size()];
+
+      geometry_msgs::msg::Point start_point;
+      start_point.x = start.x;
+      start_point.y = start.y;
+      start_point.z = 0.0;
+      geometry_msgs::msg::Point end_point;
+      end_point.x = end.x;
+      end_point.y = end.y;
+      end_point.z = 0.0;
+
+      current_line_points.push_back(start_point);
+      current_line_points.push_back(end_point);
+      history_line_points.push_back(start_point);
+      history_line_points.push_back(end_point);
+    }
+  };
+
+  // contours already generated from image projection above (current_polygon_points,
+  // current_line_points and history_line_points filled).
+
+  if (current_line_points.empty())
+  {
+    return;
+  }
+
+  explored_boundary_msg_.polygon.points = current_polygon_points;
+  explored_boundary_marker_->marker_.points = current_line_points;
+  explored_boundary_marker_->SetAction(visualization_msgs::msg::Marker::ADD);
+
+  explored_boundary_history_marker_->marker_.points.insert(explored_boundary_history_marker_->marker_.points.end(),
+                                                         history_line_points.begin(), history_line_points.end());
+  explored_boundary_history_marker_->SetAction(visualization_msgs::msg::Marker::ADD);
+
+  explored_boundary_marker_->SetAction(visualization_msgs::msg::Marker::ADD);
+  misc_utils_ns::Publish(nh_, explored_boundary_pub_, explored_boundary_msg_, world_frame_id_);
+  explored_boundary_marker_->Publish();
+  explored_boundary_history_marker_->Publish();
 }
 
 }  // namespace planning_env_ns
