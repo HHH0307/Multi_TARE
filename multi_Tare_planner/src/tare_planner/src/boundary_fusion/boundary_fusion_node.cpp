@@ -17,8 +17,7 @@ namespace tare_planner
 class BoundaryFusionNode : public rclcpp::Node
 {
 public:
-  BoundaryFusionNode()
-  : rclcpp::Node("boundary_fusion_node")
+  BoundaryFusionNode() : rclcpp::Node("boundary_fusion_node")
   {
     declare_parameter<int>("robot_num", 3);
     declare_parameter<std::string>("global_boundary_topic", "/global_coverage_boundary");
