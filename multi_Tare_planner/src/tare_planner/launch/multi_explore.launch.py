@@ -29,23 +29,6 @@ def launch_tare_node(context, scenario, robot_num, robot_name):
     )
 
     launch_actions = [multi_tare_planner_node]
-    if robot_num_str != '1' and robot_name_str == 'robot_1':
-        boundary_fusion_node = Node(
-            package='tare_planner',
-            executable='boundary_fusion_node',
-            name='boundary_fusion_node',
-            output='screen',
-            namespace='/',
-            parameters=[{
-                'robot_num': int(robot_num_str),
-                'global_boundary_topic': '/global_coverage_boundary',
-                'global_boundary_marker_topic': '/global_coverage_boundary_marker',
-                'global_boundary_frame_id': 'map',
-                'boundary_sample_step': 0.25,
-                'boundary_voxel_size': 0.25,
-            }]
-        )
-        launch_actions.insert(0, boundary_fusion_node)
 
     print("###########################################"+ test_path)
     return launch_actions
