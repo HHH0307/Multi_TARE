@@ -138,6 +138,10 @@ add_library(multi_sensor_coverage_planner_ground src/sensor_coverage_planner/mul
 ament_target_dependencies(multi_sensor_coverage_planner_ground rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
 target_link_libraries(multi_sensor_coverage_planner_ground ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} graph planning_env keypose_graph merger_graph viewpoint_manager pointcloud_manager grid_world local_coverage_planner multi_tare_visualizer)
 
+add_executable(boundary_fusion_node src/boundary_fusion/boundary_fusion_node.cpp)
+ament_target_dependencies(boundary_fusion_node rclcpp geometry_msgs visualization_msgs)
+target_link_libraries(boundary_fusion_node ${OpenCV_LIBS})
+
 add_executable(navigationBoundary src/navigation_boundary_publisher/navigationBoundary.cpp)
 ament_target_dependencies(navigationBoundary rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions)
 target_link_libraries(navigationBoundary ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES})
@@ -152,6 +156,7 @@ target_link_libraries(multi_tare_planner_node ${PROJECT_NAME}__rosidl_typesuppor
 #############
 
 install(TARGETS
+  boundary_fusion_node
   navigationBoundary
   multi_tare_planner_node
   DESTINATION lib/${PROJECT_NAME}

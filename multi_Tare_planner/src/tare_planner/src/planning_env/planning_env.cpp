@@ -13,6 +13,7 @@
 #include <viewpoint_manager/viewpoint_manager.h>
 
 #include <algorithm>
+#include <limits>
 #include <utility>
 
 #include <pcl/surface/concave_hull.h>
@@ -126,6 +127,7 @@ PlanningEnv::PlanningEnv(rclcpp::Node::SharedPtr nh, std::string world_frame_id)
     explored_boundary_history_marker_->SetColorRGBA(0.15, 0.75, 1.0, 0.30);
     explored_boundary_pub_ = nh->create_publisher<geometry_msgs::msg::PolygonStamped>("explored_boundary", 2);
     explored_boundary_msg_.header.frame_id = world_frame_id_;
+    explored_boundary_cloud_.reset(new pcl::PointCloud<pcl::PointXYZI>());
   occupied_cloud_ =
       std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(nh, "occupied_cloud", world_frame_id); // 占用点云
   free_cloud_ = std::make_shared<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>>(nh, "free_cloud", world_frame_id); // 空闲点云
@@ -183,6 +185,63 @@ void PlanningEnv::UpdateCollisionCloud()
   // 下采样碰撞点云
   collision_cloud_downsizer_.Downsize(collision_cloud_, parameters_.kCollisionCloudDwzLeafSize,
                                       parameters_.kCollisionCloudDwzLeafSize, parameters_.kCollisionCloudDwzLeafSize);
+}
+
+void PlanningEnv::UpdateCoverageBoundary(const geometry_msgs::msg::Polygon& polygon)
+{
+  if (polygon.points.empty())
+  {
+    return;
+  }
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr boundary_points(new pcl::PointCloud<pcl::PointXYZI>());
+  boundary_points->points.reserve(coverage_boundary_.points.size() + polygon.points.size());
+
+  auto append_polygon_points = [&](const geometry_msgs::msg::Polygon& src_polygon) {
+    for (const auto& polygon_point : src_polygon.points)
+    {
+      pcl::PointXYZI point;
+      point.x = polygon_point.x;
+      point.y = polygon_point.y;
+      point.z = 0.0f;
+      boundary_points->points.push_back(point);
+    }
+  };
+
+  append_polygon_points(coverage_boundary_);
+  append_polygon_points(polygon);
+
+  if (boundary_points->points.size() < 3)
+  {
+    coverage_boundary_ = polygon;
+    return;
+  }
+
+  pcl::ConvexHull<pcl::PointXYZI> convex_hull;
+  convex_hull.setInputCloud(boundary_points); 
+  convex_hull.setDimension(2);
+
+  pcl::PointCloud<pcl::PointXYZI> hull_cloud;
+  convex_hull.reconstruct(hull_cloud);
+
+  if (hull_cloud.points.size() < 3)
+  {
+    coverage_boundary_ = polygon;
+    return;
+  }
+
+  geometry_msgs::msg::Polygon merged_polygon;
+  merged_polygon.points.reserve(hull_cloud.points.size());
+  for (const auto& hull_point : hull_cloud.points)
+  {
+    geometry_msgs::msg::Point32 polygon_point;
+    polygon_point.x = static_cast<float>(hull_point.x);
+    polygon_point.y = static_cast<float>(hull_point.y);
+    polygon_point.z = 0.0F;
+    merged_polygon.points.push_back(polygon_point);
+  }
+
+  coverage_boundary_ = std::move(merged_polygon);
 }
 
 // 更新前向点云 提取、过滤、聚类前沿点云
@@ -498,15 +557,14 @@ void PlanningEnv::UpdateExploredBoundary()
     explored_points->points.push_back(explored_point);
   }
 
-  if (explored_points->points.size() < 3)
+  if (!explored_points->points.empty())
   {
-    return;
+    *(explored_boundary_cloud_) += *explored_points;
+    explored_boundary_downsizer_.Downsize(explored_boundary_cloud_, parameters_.kSurfaceCloudDwzLeafSize,
+                                         parameters_.kSurfaceCloudDwzLeafSize, parameters_.kSurfaceCloudDwzLeafSize);
   }
 
-  explored_boundary_downsizer_.Downsize(explored_points, parameters_.kSurfaceCloudDwzLeafSize,
-                                       parameters_.kSurfaceCloudDwzLeafSize, parameters_.kSurfaceCloudDwzLeafSize);
-
-  if (explored_points->points.size() < 3)
+  if (explored_boundary_cloud_->points.size() < 3)
   {
     return;
   }
@@ -517,8 +575,8 @@ void PlanningEnv::UpdateExploredBoundary()
 
   std::vector<geometry_msgs::msg::Point> current_line_points;
   std::vector<geometry_msgs::msg::Point> history_line_points;
-  current_line_points.reserve(explored_points->points.size() * 2);
-  history_line_points.reserve(explored_points->points.size() * 2);
+  current_line_points.reserve(explored_boundary_cloud_->points.size() * 2);
+  history_line_points.reserve(explored_boundary_cloud_->points.size() * 2);
   std::vector<geometry_msgs::msg::Point32> current_polygon_points;
 
   // Compute grid bounds
@@ -526,7 +584,7 @@ void PlanningEnv::UpdateExploredBoundary()
   float max_x = -std::numeric_limits<float>::infinity();
   float min_y = std::numeric_limits<float>::infinity();
   float max_y = -std::numeric_limits<float>::infinity();
-  for (const auto &p : explored_points->points) {
+  for (const auto &p : explored_boundary_cloud_->points) {
     if (p.x < min_x) min_x = p.x;
     if (p.x > max_x) max_x = p.x;
     if (p.y < min_y) min_y = p.y;
@@ -546,7 +604,7 @@ void PlanningEnv::UpdateExploredBoundary()
   }
 
   cv::Mat img = cv::Mat::zeros(rows, cols, CV_32FC1);
-  for (const auto &pt : explored_points->points) {
+  for (const auto &pt : explored_boundary_cloud_->points) {
     int c = static_cast<int>((pt.x - min_x) / (max_x - min_x + 1e-6) * (cols - 1));
     int r = static_cast<int>((max_y - pt.y) / (max_y - min_y + 1e-6) * (rows - 1));
     if (r >= 0 && r < rows && c >= 0 && c < cols) {
@@ -559,7 +617,9 @@ void PlanningEnv::UpdateExploredBoundary()
   cv::threshold(img, bin, 0.5, 255, cv::THRESH_BINARY);
   bin.convertTo(bin, CV_8UC1);
 
-  // Optionally resize/blur to remove noise (kept small)
+  cv::Mat close_kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+  cv::morphologyEx(bin, bin, cv::MORPH_CLOSE, close_kernel);
+
   // Find contours
   std::vector<std::vector<cv::Point>> raw_contours;
   std::vector<cv::Vec4i> hierarchy;
@@ -609,55 +669,12 @@ void PlanningEnv::UpdateExploredBoundary()
     }
   }
 
-  auto append_hull = [&](const pcl::PointCloud<pcl::PointXYZI>::Ptr& hull_points, bool use_as_current_polygon) {
-    if (hull_points->points.size() < 3)
-    {
-      return;
-    }
-
-    if (use_as_current_polygon)
-    {
-      current_polygon_points.clear();
-      current_polygon_points.reserve(hull_points->points.size());
-      for (const auto& point : hull_points->points)
-      {
-        geometry_msgs::msg::Point32 boundary_point32;
-        boundary_point32.x = static_cast<float>(point.x);
-        boundary_point32.y = static_cast<float>(point.y);
-        boundary_point32.z = 0.0F;
-        current_polygon_points.push_back(boundary_point32);
-      }
-    }
-
-    for (std::size_t i = 0; i < hull_points->points.size(); ++i)
-    {
-      const auto& start = hull_points->points[i];
-      const auto& end = hull_points->points[(i + 1) % hull_points->points.size()];
-
-      geometry_msgs::msg::Point start_point;
-      start_point.x = start.x;
-      start_point.y = start.y;
-      start_point.z = 0.0;
-      geometry_msgs::msg::Point end_point;
-      end_point.x = end.x;
-      end_point.y = end.y;
-      end_point.z = 0.0;
-
-      current_line_points.push_back(start_point);
-      current_line_points.push_back(end_point);
-      history_line_points.push_back(start_point);
-      history_line_points.push_back(end_point);
-    }
-  };
-
-  // contours already generated from image projection above (current_polygon_points,
-  // current_line_points and history_line_points filled).
-
   if (current_line_points.empty())
   {
     return;
   }
 
+  explored_boundary_msg_.header.stamp = nh_->now();
   explored_boundary_msg_.polygon.points = current_polygon_points;
   explored_boundary_marker_->marker_.points = current_line_points;
   explored_boundary_marker_->SetAction(visualization_msgs::msg::Marker::ADD);

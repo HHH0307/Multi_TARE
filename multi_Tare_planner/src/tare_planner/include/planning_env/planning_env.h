@@ -245,10 +245,7 @@ public:
       UpdateFrontiers();
     }
   }
-  inline void UpdateCoverageBoundary(const geometry_msgs::msg::Polygon& polygon)
-  {
-    coverage_boundary_ = polygon;
-  }
+  void UpdateCoverageBoundary(const geometry_msgs::msg::Polygon& polygon);
 
   template <class PCLPointType>
   void GetCoverageCloudWithinBoundary(typename pcl::PointCloud<PCLPointType>::Ptr& cloud)
@@ -364,6 +361,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr explored_boundary_pub_;
   geometry_msgs::msg::PolygonStamped explored_boundary_msg_;
   pointcloud_utils_ns::PointCloudDownsizer<pcl::PointXYZI> explored_boundary_downsizer_;
+  pcl::PointCloud<pcl::PointXYZI>::Ptr explored_boundary_cloud_;
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> occupied_cloud_;
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> free_cloud_;
   std::shared_ptr<pointcloud_utils_ns::PCLCloud<pcl::PointXYZI>> unknown_cloud_;

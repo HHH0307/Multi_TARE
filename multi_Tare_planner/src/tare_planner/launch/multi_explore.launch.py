@@ -13,16 +13,42 @@ def launch_tare_node(context, scenario, robot_num, robot_name):
     robot_num_str = str(robot_num.perform(context))    # 解析机器人数量为字符串
     robot_name_str = str(robot_name.perform(context))  # 解析后的机器人名称字符串
     test_path = os.path.join(get_package_share_directory('tare_planner'), f"{scenario_str}_{robot_num_str}_{robot_name_str}.yaml")
+    robot_parameters = [
+        test_path,
+    ]
+    if robot_num_str != '1':
+        robot_parameters.append({'sub_coverage_boundary_topic_': '/global_coverage_boundary'})
+
     multi_tare_planner_node = Node(
         package='tare_planner',
         executable='multi_tare_planner_node',
         name='multi_tare_planner_node',
         output='screen',
         namespace='sensor_coverage_planner',
-        parameters=[test_path]
+        parameters=robot_parameters
     )
+
+    launch_actions = [multi_tare_planner_node]
+    if robot_num_str != '1' and robot_name_str == 'robot_1':
+        boundary_fusion_node = Node(
+            package='tare_planner',
+            executable='boundary_fusion_node',
+            name='boundary_fusion_node',
+            output='screen',
+            namespace='/',
+            parameters=[{
+                'robot_num': int(robot_num_str),
+                'global_boundary_topic': '/global_coverage_boundary',
+                'global_boundary_marker_topic': '/global_coverage_boundary_marker',
+                'global_boundary_frame_id': 'map',
+                'boundary_sample_step': 0.25,
+                'boundary_voxel_size': 0.25,
+            }]
+        )
+        launch_actions.insert(0, boundary_fusion_node)
+
     print("###########################################"+ test_path)
-    return [multi_tare_planner_node]
+    return launch_actions
 
 
 def generate_launch_description():
