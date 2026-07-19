@@ -475,8 +475,8 @@ void KeyposeGraph::CheckLocalCollision(const geometry_msgs::msg::Point& robot_po
               }
               else
               {
-                new_edge.node_index_min = neighbor_ind;
-                new_edge.node_index_max = i;
+                new_edge.node_index_min = i;
+                new_edge.node_index_max = neighbor_ind;
               }
               Shared_Infor_.delete_edge_set.push_back(new_edge);
 
@@ -526,8 +526,8 @@ void KeyposeGraph::CheckLocalCollision(const geometry_msgs::msg::Point& robot_po
                     }
                     else
                     {
-                      new_edge.node_index_min = neighbor_ind;
-                      new_edge.node_index_max = i;
+                      new_edge.node_index_min = i;
+                      new_edge.node_index_max = neighbor_ind;
                     }
                     Shared_Infor_.delete_edge_set.push_back(new_edge);
                   }
@@ -609,11 +609,11 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
               }
               else
               {
-                new_edge.node_index_min = neighbor_ind;
-                new_edge.node_index_max = i;
+                new_edge.node_index_min = i;
+                new_edge.node_index_max = neighbor_ind;
               }
               Shared_Infor_.delete_edge_set.push_back(new_edge);
-              
+
               // 添加到要删除的边集合
               delete_edge_set.emplace_back(i, neighbor_ind);
             }
@@ -626,7 +626,7 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
       {
         Eigen::Vector3d viewpoint_resolution = viewpoint_manager->GetResolution();
         double collision_check_resolution = std::min(viewpoint_resolution.x(), viewpoint_resolution.y()) / 2;
-        
+
         // 检查边碰撞
         for (size_t j = 0; j < graph_[i].size(); j++)
         {
@@ -637,7 +637,7 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
               nodes_[neighbor_ind].position_.y,
               nodes_[neighbor_ind].position_.z
           );
-          
+
           std::vector<Eigen::Vector3d> interp_points;
           misc_utils_ns::LinInterpPoints(
               start_position,
@@ -645,7 +645,7 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
               collision_check_resolution,
               interp_points
           );  // 生成插值点用于碰撞检测
-          
+
           for (const auto& collision_check_position : interp_points)
           {
             int viewpoint_ind = viewpoint_manager->GetViewPointInd(collision_check_position);
@@ -655,7 +655,7 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
               {
                 geometry_msgs::msg::Point viewpoint_position =
                     viewpoint_manager->GetViewPointPosition(viewpoint_ind);
-                
+
                 // 删除邻居节点的边
                 for (size_t k = 0; k < graph_[neighbor_ind].size(); k++)
                 {
@@ -665,7 +665,7 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
                     graph_[neighbor_ind].erase(graph_[neighbor_ind].begin() + k);
                     dist_[neighbor_ind].erase(dist_[neighbor_ind].begin() + k);
                     k--;  // 调整索引
-                    
+
                     // 记录要删除的边信息
                     tare_planner::msg::SharedEdge new_edge;
                     if (i > neighbor_ind)
@@ -675,8 +675,8 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
                     }
                     else
                     {
-                      new_edge.node_index_min = neighbor_ind;
-                      new_edge.node_index_max = i;
+                      new_edge.node_index_min = i;
+                      new_edge.node_index_max = neighbor_ind;
                     }
                     Shared_Infor_.delete_edge_set.push_back(new_edge);
                     delete_edge_set.emplace_back(i, neighbor_ind);

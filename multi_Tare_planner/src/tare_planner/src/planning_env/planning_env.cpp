@@ -19,6 +19,7 @@
 #include <pcl/surface/concave_hull.h>
 #include <pcl/surface/convex_hull.h>
 #include <opencv2/opencv.hpp>
+#include <chrono>
 
 namespace planning_env_ns
 {
@@ -599,8 +600,18 @@ void PlanningEnv::UpdateExploredBoundary()
   int rows = static_cast<int>(std::ceil((max_y - min_y) / voxel));
   // clamp image size to avoid pathological cases
   const int MAX_DIM = 2048;
-  if (cols <= 0 || rows <= 0 || cols > MAX_DIM || rows > MAX_DIM) {
+  if (cols <= 0 || rows <= 0) {
     return;
+  }
+  if (cols > MAX_DIM || rows > MAX_DIM) {
+    RCLCPP_WARN(rclcpp::get_logger("standalone_logger"),
+                "UpdateExploredBoundary: image size (%d x %d) exceeds MAX_DIM (%d), capping to MAX_DIM",
+                cols, rows, MAX_DIM);
+    double scale_x = static_cast<double>(MAX_DIM) / static_cast<double>(cols);
+    double scale_y = static_cast<double>(MAX_DIM) / static_cast<double>(rows);
+    double scale = std::min(scale_x, scale_y);
+    cols = std::max(1, static_cast<int>(cols * scale));
+    rows = std::max(1, static_cast<int>(rows * scale));
   }
 
   cv::Mat img = cv::Mat::zeros(rows, cols, CV_32FC1);
@@ -623,15 +634,20 @@ void PlanningEnv::UpdateExploredBoundary()
   // Find contours
   std::vector<std::vector<cv::Point>> raw_contours;
   std::vector<cv::Vec4i> hierarchy;
-  cv::findContours(bin, raw_contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+  cv::findContours(bin, raw_contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
 
   if (raw_contours.empty()) {
     return;
   }
 
+  // 收集内部空洞轮廓作为障碍物，用于拓扑图构建时避开不可通行区域
+  std::vector<geometry_msgs::msg::Polygon> obstacle_polygons;
+
   // Convert contours to world coords and build polygon/line lists
-  for (const auto &cont : raw_contours) {
+  for (size_t ci = 0; ci < raw_contours.size(); ++ci) {
+    const auto &cont = raw_contours[ci];
     if (cont.size() < 3) continue;
+    bool is_hole = (hierarchy[ci][3] != -1);
     // Optionally simplify contour
     std::vector<cv::Point> approx;
     double eps = std::max(1.0, voxel * 1.0) ;
@@ -648,6 +664,14 @@ void PlanningEnv::UpdateExploredBoundary()
       wp.y = max_y - (static_cast<float>(r) + 0.5f) * voxel;
       wp.z = 0.0f;
       poly32.push_back(wp);
+    }
+
+    // 内部空洞轮廓收集为障碍物多边形，不绘制为边界线
+    if (is_hole) {
+      geometry_msgs::msg::Polygon obs_poly;
+      obs_poly.points = poly32;
+      obstacle_polygons.push_back(obs_poly);
+      continue;
     }
 
     // build lines
@@ -676,6 +700,7 @@ void PlanningEnv::UpdateExploredBoundary()
 
   explored_boundary_msg_.header.stamp = nh_->now();
   explored_boundary_msg_.polygon.points = current_polygon_points;
+
   explored_boundary_marker_->marker_.points = current_line_points;
   explored_boundary_marker_->SetAction(visualization_msgs::msg::Marker::ADD);
 

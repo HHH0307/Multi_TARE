@@ -641,188 +641,6 @@ grid_world_ns::RobotStatus GridWorld::GetRobotStatu()
   return robot_statu_;
 }
 
-void GridWorld::UpdateCellStatus(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager)
-{
-  int exploring_count = 0;
-  int unseen_count = 0;
-  int covered_count = 0;
-  for (int i = 0; i < subspaces_->GetCellNumber(); ++i)
-  {
-    if (subspaces_local_->GetCell(i).GetStatus() == CellStatus::EXPLORING)
-    {
-      exploring_count++;
-    }
-    else if (subspaces_local_->GetCell(i).GetStatus() == CellStatus::UNSEEN)
-    {
-      unseen_count++;
-    }
-    else if (subspaces_local_->GetCell(i).GetStatus() == CellStatus::COVERED)
-    {
-      covered_count++;
-    }
-  }
-
-  for (const auto& cell_ind : neighbor_cell_indices_)
-  {
-    subspaces_->GetCell(cell_ind).ClearViewPointIndices();
-  }
-  for (const auto& viewpoint_ind : viewpoint_manager->candidate_indices_)
-  {
-    geometry_msgs::msg::Point viewpoint_position = viewpoint_manager->GetViewPointPosition(viewpoint_ind);
-    Eigen::Vector3i sub = subspaces_->Pos2Sub(Eigen::Vector3d(viewpoint_position.x, viewpoint_position.y, viewpoint_position.z));
-    if (subspaces_->InRange(sub))
-    {
-      int cell_ind = subspaces_->Sub2Ind(sub);
-      AddViewPointToCell(cell_ind, viewpoint_ind);
-      viewpoint_manager->SetViewPointCellInd(viewpoint_ind, cell_ind);
-    }
-    else
-    {
-      RCLCPP_ERROR_STREAM(rclcpp::get_logger("standalone_logger"), "subspace sub out of bound: " << sub.transpose());
-    }
-  }
-
-  for (const auto& cell_ind : neighbor_cell_indices_)
-  {
-    if (subspaces_local_->GetCell(cell_ind).GetStatus() == CellStatus::COVERED_BY_OTHERS)
-    {
-      continue;
-    }
-    int candidate_count = 0;
-    int selected_viewpoint_count = 0;
-    int above_big_threshold_count = 0;
-    int above_small_threshold_count = 0;
-    int above_frontier_threshold_count = 0;
-    int highest_score_viewpoint_ind = -1;
-    int highest_score = -1;
-    for (const auto& viewpoint_ind : subspaces_->GetCell(cell_ind).GetViewPointIndices())
-    {
-      MY_ASSERT(viewpoint_manager->IsViewPointCandidate(viewpoint_ind));
-      candidate_count++;
-      if (viewpoint_manager->ViewPointSelected(viewpoint_ind))
-      {
-        selected_viewpoint_count++;
-      }
-      if (viewpoint_manager->ViewPointVisited(viewpoint_ind))
-      {
-        continue;
-      }
-      int score = viewpoint_manager->GetViewPointCoveredPointNum(viewpoint_ind);
-      int frontier_score = viewpoint_manager->GetViewPointCoveredFrontierPointNum(viewpoint_ind);
-      if (score > highest_score)
-      {
-        highest_score = score;
-        highest_score_viewpoint_ind = viewpoint_ind;
-      }
-      if (score > kMinAddPointNumSmall)
-      {
-        above_small_threshold_count++;
-      }
-      if (score > kMinAddPointNumBig)
-      {
-        above_big_threshold_count++;
-      }
-      if (frontier_score > kMinAddFrontierPointNum)
-      {
-        above_frontier_threshold_count++;
-      }
-    }
-    // Exploring to Covered 新修改
-    if (subspaces_local_->GetCell(cell_ind).GetStatus() == CellStatus::EXPLORING &&
-        above_frontier_threshold_count < kCellExploringToCoveredThr &&
-        above_small_threshold_count < kCellExploringToCoveredThr && selected_viewpoint_count == 0 &&
-        candidate_count > 0)
-    {
-      subspaces_local_->GetCell(cell_ind).SetStatus(CellStatus::COVERED); // 新增
-      if(subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::UNSEEN || subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::EXPLORING) // 新增 判断
-      {
-        subspaces_->GetCell(cell_ind).SetStatus(CellStatus::COVERED);
-      }
-    }
-    // Covered to Exploring 新修改
-    else if (subspaces_local_->GetCell(cell_ind).GetStatus() == CellStatus::COVERED &&
-             (above_big_threshold_count >= kCellCoveredToExploringThr ||
-              above_frontier_threshold_count >= kCellCoveredToExploringThr))
-    {
-      subspaces_local_->GetCell(cell_ind).SetStatus(CellStatus::EXPLORING); // 新增
-      if (subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::UNSEEN) // 新增
-      {
-        subspaces_->GetCell(cell_ind).SetStatus(CellStatus::EXPLORING);
-      }
-      almost_covered_cell_indices_.push_back(cell_ind);
-    }
-    // Exploring to Almost covered 新修改
-    else if (subspaces_local_->GetCell(cell_ind).GetStatus() == CellStatus::EXPLORING && selected_viewpoint_count == 0 &&
-             candidate_count > 0)
-    {
-      almost_covered_cell_indices_.push_back(cell_ind);
-    }
-    // 新修改
-    else if (subspaces_local_->GetCell(cell_ind).GetStatus() != CellStatus::COVERED && selected_viewpoint_count > 0)
-    {
-      subspaces_local_->GetCell(cell_ind).SetStatus(CellStatus::EXPLORING);
-      if (subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::UNSEEN) // 新增
-      {
-        subspaces_->GetCell(cell_ind).SetStatus(CellStatus::EXPLORING); // 新增
-      }
-      almost_covered_cell_indices_.erase(
-          std::remove(almost_covered_cell_indices_.begin(), almost_covered_cell_indices_.end(), cell_ind),
-          almost_covered_cell_indices_.end());
-    }
-    // 新修改
-    else if (subspaces_local_->GetCell(cell_ind).GetStatus() == CellStatus::EXPLORING && candidate_count == 0)
-    {
-      // First visit
-      if (subspaces_->GetCell(cell_ind).GetVisitCount() == 1 &&
-          subspaces_->GetCell(cell_ind).GetGraphNodeIndices().empty())
-      {
-        subspaces_local_->GetCell(cell_ind).SetStatus(CellStatus::COVERED); // 新增 
-        if (subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::UNSEEN || subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::EXPLORING)  // 新增
-        {
-          subspaces_->GetCell(cell_ind).SetStatus(CellStatus::COVERED);
-        }
-      }
-      else
-      {
-        geometry_msgs::msg::Point cell_position = subspaces_->GetCell(cell_ind).GetPosition();
-        double xy_dist_to_robot = misc_utils_ns::PointXYDist<geometry_msgs::msg::Point, geometry_msgs::msg::Point>(cell_position, robot_position_);
-        double z_dist_to_robot = std::abs(cell_position.z - robot_position_.z);
-        if (xy_dist_to_robot < kCellSize && z_dist_to_robot < kCellHeight * 0.8)
-        {
-          subspaces_local_->GetCell(cell_ind).SetStatus(CellStatus::COVERED); // 新增
-          if (subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::UNSEEN || subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::EXPLORING) // 新增循环
-          {
-            subspaces_->GetCell(cell_ind).SetStatus(CellStatus::COVERED);
-          }
-        }
-      }
-    }
-
-    // 新修改
-    if (subspaces_local_->GetCell(cell_ind).GetStatus() == CellStatus::EXPLORING && candidate_count > 0)
-    {
-      subspaces_->GetCell(cell_ind).SetRobotPosition(robot_position_);
-      subspaces_->GetCell(cell_ind).SetKeyposeID(cur_keypose_id_);
-    }
-  }
-  for (const auto& cell_ind : almost_covered_cell_indices_)
-  {
-    if (std::find(neighbor_cell_indices_.begin(), neighbor_cell_indices_.end(), cell_ind) ==
-        neighbor_cell_indices_.end())
-    {
-      subspaces_local_->GetCell(cell_ind).SetStatus(CellStatus::COVERED); // 新增
-      if (subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::UNSEEN || subspaces_->GetCell(cell_ind).GetStatus() == CellStatus::EXPLORING) // 新增
-      {
-        subspaces_->GetCell(cell_ind).SetStatus(CellStatus::COVERED); 
-      }
-      almost_covered_cell_indices_.erase(
-          std::remove(almost_covered_cell_indices_.begin(), almost_covered_cell_indices_.end(), cell_ind),
-          almost_covered_cell_indices_.end());
-    }
-  }
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  修改  状态更新 -- 新增
 void GridWorld::UpdateCellStatus_(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager)
 {
@@ -1733,7 +1551,7 @@ void GridWorld::Get_subgrid_paths(std::vector<exploration_path_ns::ExplorationPa
             geometry_msgs::msg::Point node_position;
             node_position = cur_keypose_path.poses[j].pose.position;
             exploration_path_ns::Node keypose_node(node_position, exploration_path_ns::NodeType::GLOBAL_VIA_POINT);
-            keypose_node.keypose_graph_node_ind_ = static_cast<int>(cur_keypose_path.poses[i].pose.orientation.x);
+            keypose_node.keypose_graph_node_ind_ = static_cast<int>(cur_keypose_path.poses[j].pose.orientation.x);
             explore_path.Append(keypose_node);
           }
 
@@ -2021,22 +1839,8 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
     std::map<int, geometry_msgs::msg::Point>& other_robot_position_map)
 {
   const bool debug = true;
-  // 中心思想  使用  merger  graph  代替 keypsoe graph
-  /*
-   *  流程：
-      判定  机器人状态  前一时刻为导航状态
-              使用  目标网格  求  路径即可 再传出
-              若前一时刻 为探索状态  且  不存在局部路径
-              做全局搜索  Mdvrp  分配  获得目标网格
-              求路径再传出
-   *
-   */
-  /*******************状态判定****************************/
 
-  //    在这三个状态下，只要局部规划有了目标点  则优先探索目标点
   exploration_path_ns::ExplorationPath global_path;  // 最终发出的路径
-  // 计算  机器人位置 和  索引
-  /*********获取与机器人位置相关联的keypose图上的节点* *****/
   double min_dist_to_robot = DBL_MAX;
   geometry_msgs::msg::Point global_path_robot_position = robot_position_;  //机器人在全局路径上的  位置
   Eigen::Vector3d eigen_robot_position(robot_position_.x, robot_position_.y,

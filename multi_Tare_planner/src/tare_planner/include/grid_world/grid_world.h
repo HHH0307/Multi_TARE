@@ -707,7 +707,6 @@ public:
     bool IsRobotPositionSet(int cell_ind); //单元是否是机器人位置
     void Reset();
     int GetCellStatusCount(grid_world_ns::CellStatus status);  //得到单元状态数量
-    void UpdateCellStatus(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager);   //更新单元状态  通过视点管理类
     //修改状态改变
     void UpdateCellStatus_(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager);   //更新单元状态  通过视点管理类    
 
