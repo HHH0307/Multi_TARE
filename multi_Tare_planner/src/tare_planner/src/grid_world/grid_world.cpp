@@ -556,6 +556,31 @@ void GridWorld::GetExploringCellIndices(std::vector<int>& exploring_cell_indices
   }
 }
 
+void GridWorld::GetExploringCellIndicesWorld(std::vector<int>& exploring_cell_indices_world)
+{
+  exploring_cell_indices_world.clear();
+  for (int i = 0; i < subspaces_->GetCellNumber(); i++)
+  {
+    if (subspaces_->GetCell(i).GetStatus() == CellStatus::EXPLORING)
+    {
+      exploring_cell_indices_world.push_back(i);
+    }
+  }
+}
+
+void GridWorld::GetExploringAndCoveredCellIndicesWorld(std::vector<int>& cell_indices_world)
+{
+  cell_indices_world.clear();
+  for (int i = 0; i < subspaces_->GetCellNumber(); i++)
+  {
+    CellStatus status = subspaces_->GetCell(i).GetStatus();
+    if (status == CellStatus::EXPLORING || status == CellStatus::COVERED)
+    {
+      cell_indices_world.push_back(i);
+    }
+  }
+}
+
 CellStatus GridWorld::GetCellStatus(int cell_ind)
 {
   MY_ASSERT(subspaces_->InRange(cell_ind));
@@ -577,6 +602,13 @@ geometry_msgs::msg::Point GridWorld::GetCellPosition(int cell_ind)
 {
   MY_ASSERT(subspaces_->InRange(cell_ind));
   return subspaces_->GetCell(cell_ind).GetPosition();
+}
+
+// 阶段3.1: 获取 cell 内的 merger_graph 节点索引列表
+std::vector<int> GridWorld::GetCellMergerGraphNodeIndices(int cell_ind)
+{
+  MY_ASSERT(subspaces_->InRange(cell_ind));
+  return subspaces_->GetCell(cell_ind).GetMergerGraphNodeIndices();
 }
 
 void GridWorld::SetCellRobotPosition(int cell_ind, const geometry_msgs::msg::Point& robot_position)
@@ -2504,7 +2536,21 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
       next_position = exploring_cell_positions[next_ind];
 
       nav_msgs::msg::Path keypose_path;  //路径
-      keypose_graph->GetShortestPath(cur_position, next_position, true, keypose_path, true);  //得到两个位置的   连接路径       false
+      // 阶段 3.3c: 优先用 skeleton_graph 加速路径填充
+      bool used_skeleton_path = false;
+      if (skeleton_graph && skeleton_graph_ns::SkeletonGraph::enabled_ &&
+          !skeleton_graph->IsDegraded() && skeleton_graph->GetNodeNum() > 0 &&
+          skeleton_graph->IsCellInGraph(exploring_cell_indices[cur_ind]) &&
+          skeleton_graph->IsCellInGraph(exploring_cell_indices[next_ind]))
+      {
+        used_skeleton_path = skeleton_graph->GetShortestPath(
+            cur_position, next_position, true, keypose_path, *merger_graph);
+      }
+      if (!used_skeleton_path)
+      {
+        // 回退到 keypose_graph 路径搜索
+        keypose_graph->GetShortestPath(cur_position, next_position, true, keypose_path, true);
+      }
       exploration_path_ns::Node node(Eigen::Vector3d(cur_position.x, cur_position.y, cur_position.z));  //当前位置
       if (i == 0)
       {

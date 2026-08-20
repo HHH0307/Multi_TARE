@@ -130,4 +130,5 @@ robot_1/sensor_coverage_planner/multi_tare_planner_node:
         kLocalPlanningHorizonMarkerColorA : 1.0
         kLocalPlanningHorizonMarkerWidth : 0.3
         kLocalPlanningHorizonHeight : 3.0
+        use_skeleton_graph : true  # 骨架图加速开关（true 启用拓扑骨架加速距离矩阵计算，false 回退到 merger_graph）
 

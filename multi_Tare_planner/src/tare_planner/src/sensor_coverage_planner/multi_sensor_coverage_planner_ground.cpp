@@ -134,6 +134,10 @@ void SensorCoveragePlanner3D::ReadParameters() {
   // tare_visualizer
   this->declare_parameter<bool>("kExploringSubspaceMarkerColorGradientAlpha", true);
   this->declare_parameter<bool>("use_skeleton_graph", true);  // 骨架图加速开关
+  // 阶段 2: 骨架图性能调优参数（yaml 中可选覆盖；不配置时使用默认值）
+  this->declare_parameter<int>("skeleton_kMaxFloydWarshallNodeNum", 300);   // V 超过则改用 Dijkstra
+  this->declare_parameter<int>("skeleton_kMaxSkeletonNodeNum", 1000);        // V 超过则降级回退 merger_graph
+  this->declare_parameter<int>("skeleton_kDijkstraCacheSize", 16);            // Dijkstra LRU 缓存条目数
   this->declare_parameter<double>("kExploringSubspaceMarkerColorMaxAlpha", 1.0);
   this->declare_parameter<double>("kExploringSubspaceMarkerColorR", 0.0);
   this->declare_parameter<double>("kExploringSubspaceMarkerColorG", 1.0);
@@ -410,6 +414,17 @@ bool SensorCoveragePlanner3D::initialize() {
   this->get_parameter("use_skeleton_graph", use_skeleton);
   skeleton_graph_ns::SkeletonGraph::enabled_ = use_skeleton;
   RCLCPP_INFO(this->get_logger(), "Skeleton graph: %s", use_skeleton ? "enabled" : "disabled");
+
+  // 阶段 2: 读取骨架图性能调优参数并注入 skeleton_graph_
+  int sk_max_floyd = this->get_parameter("skeleton_kMaxFloydWarshallNodeNum").as_int();
+  int sk_max_node = this->get_parameter("skeleton_kMaxSkeletonNodeNum").as_int();
+  int sk_dijk_cache = this->get_parameter("skeleton_kDijkstraCacheSize").as_int();
+  skeleton_graph_->SetMaxFloydWarshallNodeNum(sk_max_floyd);
+  skeleton_graph_->SetMaxSkeletonNodeNum(sk_max_node);
+  skeleton_graph_->SetDijkstraCacheSize(sk_dijk_cache);
+  RCLCPP_INFO(this->get_logger(),
+              "Skeleton graph params: max_floyd=%d, max_node=%d, dijkstra_cache=%d",
+              sk_max_floyd, sk_max_node, sk_dijk_cache);
 
   keypose_graph_->SetAllowVerticalEdge(false);
   merger_graph_->SetAllowVerticalEdge(false);
@@ -2559,7 +2574,7 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     // 骨架图增量更新（只在单元数变化时重建）
     if (skeleton_graph_ns::SkeletonGraph::enabled_)
     {
-      skeleton_graph_->UpdateFromGridWorld(*grid_world_);
+      skeleton_graph_->UpdateFromGridWorld(*grid_world_, *merger_graph_);
       // 发布骨架图可视化
       if (skeleton_graph_->GetNodeNum() > 0)
       {
@@ -2567,6 +2582,26 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
                                     skeleton_graph_edge_marker_->marker_);
         skeleton_graph_node_marker_->Publish();
         skeleton_graph_edge_marker_->Publish();
+      }
+      // 阶段 2.4: 节流输出骨架图性能统计（每 5 秒一次）
+      {
+        static rclcpp::Time last_stats_time = this->now();
+        rclcpp::Time now = this->now();
+        if ((now - last_stats_time).seconds() > 5.0) {
+          const auto& s = skeleton_graph_->GetStats();
+          int hit_rate = (s.dist_query_count > 0)
+                             ? static_cast<int>(100.0 * s.dist_query_hit_count / s.dist_query_count)
+                             : 0;
+          RCLCPP_INFO(this->get_logger(),
+                      "[Skel] nodes=%d edges=%d | builds=%d incr=%d | dist_queries=%d hit_rate=%d%% "
+                      "dijkstra=%d | build=%.2fms update=%.2fms query=%.2fms | degraded=%d",
+                      s.node_num, s.edge_num,
+                      s.build_count, s.incremental_update_count,
+                      s.dist_query_count, hit_rate, s.dijkstra_query_count,
+                      s.last_build_ms, s.last_update_ms,
+                      s.total_query_ms, skeleton_graph_->IsDegraded() ? 1 : 0);
+          last_stats_time = now;
+        }
       }
     }
 

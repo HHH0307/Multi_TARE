@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2022
  *
  */
-#ifndef MERGER_GRAPH_H_
-#define MERGER_GRAPH_H_
+#pragma once
+
 #include "keypose_graph/keypose_graph.h"
 #include "rclcpp/rclcpp.hpp"
 // #include "ikd_Tree.h"
@@ -149,4 +149,3 @@ private:
 
 };  // namespace merger_graph_ns
 
-#endif

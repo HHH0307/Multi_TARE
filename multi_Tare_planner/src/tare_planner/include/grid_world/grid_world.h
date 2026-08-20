@@ -703,12 +703,16 @@ public:
                               std::vector<int>& neighbor_indices);   //得到给定单元的   邻接单元ID
     void GetNeighborCellIndices(const geometry_msgs::msg::Point& position, const Eigen::Vector3i& neighbor_range,
                               std::vector<int>& neighbor_indices);  //得到给定位置的   邻接单元ID
-    void GetExploringCellIndices(std::vector<int>& exploring_cell_indices);  //得到探索单元的ID
+    void GetExploringCellIndices(std::vector<int>& exploring_cell_indices);  //得到探索单元的ID（基于 subspaces_local_ 视角）
+    void GetExploringCellIndicesWorld(std::vector<int>& exploring_cell_indices_world);  //得到探索单元的ID（基于 subspaces_world_ 视角，用于拓扑骨架图构建）
+    void GetExploringAndCoveredCellIndicesWorld(std::vector<int>& cell_indices_world);  //得到 EXPLORING+COVERED 单元ID（world 视角，供骨架图使用）
     std::vector<int> GetCellConnectedCellIndices(int cell_ind);  //获取单元的连接单元ID列表
     CellStatus GetCellStatus(int cell_ind);  //得到单元状态
     CellStatus GetCellStatus_world(int cell_ind);  //得到单元状态
     void SetCellStatus(int cell_ind, CellStatus status);  //设置单元状态
     geometry_msgs::msg::Point GetCellPosition(int cell_ind); //得到给定单元ID的 位置
+    // 阶段3.1: 获取 cell 内的 merger_graph 节点索引列表（供骨架图选取代表点）
+    std::vector<int> GetCellMergerGraphNodeIndices(int cell_ind);  //得到给定单元ID内的 merger_graph 节点索引列表
     void SetCellRobotPosition(int cell_ind, const geometry_msgs::msg::Point& robot_position);  //设置单元机器人位置
     geometry_msgs::msg::Point GetCellRobotPosition(int cell_ind);  //得到单元  机器人位置
     void CellAddVisitCount(int cell_ind);   //单元添加访问次数
