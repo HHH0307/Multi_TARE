@@ -72,7 +72,7 @@ class SkeletonGraph {
    *  - 自然继承 merger_graph 的多机器人共享信息（间接共享方案 A） */
   void BuildFromGridWorld(
       grid_world_ns::GridWorld& grid_world,
-      const merger_graph_ns::MergerGraph& merger_graph);
+      merger_graph_ns::MergerGraph& merger_graph);
 
   /** Incremental update: add new cells / update connectivity.
    *  阶段 2.1 + 3.3b: 基于 added/removed cell 集合做增量更新，不全量重建。
@@ -81,7 +81,7 @@ class SkeletonGraph {
    *  - 有 removed: 降级为全量重建（删除节点索引重排复杂）
    */
   void UpdateFromGridWorld(grid_world_ns::GridWorld& grid_world,
-                           const merger_graph_ns::MergerGraph& merger_graph);
+                           merger_graph_ns::MergerGraph& merger_graph);
 
   /** Force rebuild from scratch next time. */
   void MarkDirty() { dirty_ = true; }
@@ -113,7 +113,7 @@ class SkeletonGraph {
                        const geometry_msgs::msg::Point& goal,
                        bool get_path,
                        nav_msgs::msg::Path& path,
-                       const merger_graph_ns::MergerGraph& merger_graph);
+                       merger_graph_ns::MergerGraph& merger_graph);
 
   /** Get all pairs shortest path matrix (小图 Floyd-Warshall 预计算; 大图为空). */
   const std::vector<std::vector<double>>& GetAllPairsDist() const {
@@ -165,15 +165,15 @@ class SkeletonGraph {
   void RebuildKDTree();
   void ComputeAllPairsShortestPaths();
   void BuildFromScratch(grid_world_ns::GridWorld& grid_world,
-                        const merger_graph_ns::MergerGraph& merger_graph);
+                        merger_graph_ns::MergerGraph& merger_graph);
 
   // 阶段 2.1 + 3.3b: 增量更新辅助函数（需要 merger_graph 选取代表点）
   void AddCellNode(grid_world_ns::GridWorld& grid_world,
-                   const merger_graph_ns::MergerGraph& merger_graph,
+                   merger_graph_ns::MergerGraph& merger_graph,
                    int cell_ind);
   void AddEdgesForCell(grid_world_ns::GridWorld& grid_world, int cell_ind);
   bool IncrementalUpdate(grid_world_ns::GridWorld& grid_world,
-                         const merger_graph_ns::MergerGraph& merger_graph,
+                         merger_graph_ns::MergerGraph& merger_graph,
                          const std::vector<int>& added_cells,
                          const std::vector<int>& removed_cells);
 
@@ -183,7 +183,7 @@ class SkeletonGraph {
   // 阶段 3.1: 从 cell 的 GetMergerGraphNodeIndices() 中选最靠近 cell 中心的 connected 节点
   //   返回 merger_graph 节点索引；无合适节点返回 -1
   int SelectRepresentativeMergerNode(grid_world_ns::GridWorld& grid_world,
-                                     const merger_graph_ns::MergerGraph& merger_graph,
+                                     merger_graph_ns::MergerGraph& merger_graph,
                                      int cell_ind);
 
   // 阶段 2.3: 大图按需 Dijkstra

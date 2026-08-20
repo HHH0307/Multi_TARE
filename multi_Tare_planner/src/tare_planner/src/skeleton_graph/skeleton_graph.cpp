@@ -23,7 +23,7 @@ SkeletonGraph::SkeletonGraph()
 
 void SkeletonGraph::BuildFromGridWorld(
     grid_world_ns::GridWorld& grid_world,
-    const merger_graph_ns::MergerGraph& merger_graph) {
+    merger_graph_ns::MergerGraph& merger_graph) {
   if (!enabled_) return;
   BuildFromScratch(grid_world, merger_graph);
 }
@@ -31,7 +31,7 @@ void SkeletonGraph::BuildFromGridWorld(
 // 阶段 3.1: 从 cell 的 GetMergerGraphNodeIndices() 中选最靠近 cell 中心的 connected 节点
 int SkeletonGraph::SelectRepresentativeMergerNode(
     grid_world_ns::GridWorld& grid_world,
-    const merger_graph_ns::MergerGraph& merger_graph,
+    merger_graph_ns::MergerGraph& merger_graph,
     int cell_ind) {
   // cell 中心位置
   geometry_msgs::msg::Point cell_pos = grid_world.GetCellPosition(cell_ind);
@@ -58,7 +58,7 @@ int SkeletonGraph::SelectRepresentativeMergerNode(
 
 void SkeletonGraph::BuildFromScratch(
     grid_world_ns::GridWorld& grid_world,
-    const merger_graph_ns::MergerGraph& merger_graph) {
+    merger_graph_ns::MergerGraph& merger_graph) {
   // 阶段 2.4: 性能计时
   auto t_start = std::chrono::high_resolution_clock::now();
 
@@ -121,7 +121,7 @@ void SkeletonGraph::BuildFromScratch(
 
 // 阶段 3.1: 为 cell 创建骨架节点（位置 = merger_graph 代表节点的实际位置）
 void SkeletonGraph::AddCellNode(grid_world_ns::GridWorld& grid_world,
-                                 const merger_graph_ns::MergerGraph& merger_graph,
+                                 merger_graph_ns::MergerGraph& merger_graph,
                                  int cell_ind) {
   if (cell_to_node_.find(cell_ind) != cell_to_node_.end()) return;  // 已存在
   auto status = grid_world.GetCellStatus_world(cell_ind);
@@ -263,7 +263,7 @@ void SkeletonGraph::PruneLeafNodes(grid_world_ns::GridWorld& grid_world) {
 // 阶段 2.1 + 3.3b: 增量更新
 bool SkeletonGraph::IncrementalUpdate(
     grid_world_ns::GridWorld& grid_world,
-    const merger_graph_ns::MergerGraph& merger_graph,
+    merger_graph_ns::MergerGraph& merger_graph,
     const std::vector<int>& added_cells,
     const std::vector<int>& removed_cells) {
   auto t_start = std::chrono::high_resolution_clock::now();
@@ -328,7 +328,7 @@ bool SkeletonGraph::IncrementalUpdate(
 
 void SkeletonGraph::UpdateFromGridWorld(
     grid_world_ns::GridWorld& grid_world,
-    const merger_graph_ns::MergerGraph& merger_graph) {
+    merger_graph_ns::MergerGraph& merger_graph) {
   if (!enabled_) return;
 
   // 修复 1.4 + 阶段 2.1: 计算 added/removed 集合
@@ -533,7 +533,7 @@ bool SkeletonGraph::GetShortestPath(
     const geometry_msgs::msg::Point& goal,
     bool get_path,
     nav_msgs::msg::Path& path,
-    const merger_graph_ns::MergerGraph& merger_graph) {
+    merger_graph_ns::MergerGraph& merger_graph) {
   // 阶段 3.3a: 若骨架图为空或降级，直接回退到 merger_graph 全程 A*
   if (nodes_.empty() || degraded_) {
     if (get_path) {
