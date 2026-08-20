@@ -42,21 +42,16 @@ void Cell::Reset()
   visit_count_ = 0;
   viewpoint_indices_.clear();
   connected_cell_indices_.clear();
+  connected_cell_set_.clear();
   keypose_graph_node_indices_.clear();
   MTSP_graph_index_find_exploring_cell_ = -1; // 新增
 }
 
-bool Cell::IsCellConnected(int cell_ind)
+// IsCellConnected now inline in header with O(1) set lookup
+
+std::vector<int> GridWorld::GetCellConnectedCellIndices(int cell_ind)
 {
-  if (std::find(connected_cell_indices_.begin(), connected_cell_indices_.end(), cell_ind) !=
-      connected_cell_indices_.end())
-  {
-    return true;
-  }
-  else
-  {
-    return false;
-  }
+  return subspaces_->GetCell(cell_ind).GetConnectedCellIndices();
 }
 
 GridWorld::GridWorld(rclcpp::Node::SharedPtr nh) : initialized_(false), use_keypose_graph_(false)
@@ -993,10 +988,9 @@ void GridWorld::AddPathsInBetweenCells(const std::shared_ptr<viewpoint_manager_n
           keypose_graph, from_cell_roadmap_connection_position, to_cell_roadmap_connection_position);
 
       bool forward_connected =
-          std::find(from_cell_connected_cell_indices.begin(), from_cell_connected_cell_indices.end(), to_cell_ind) !=
-          from_cell_connected_cell_indices.end();
-      bool backward_connected = std::find(to_cell_connected_cell_indices.begin(), to_cell_connected_cell_indices.end(),
-                                          from_cell_ind) != to_cell_connected_cell_indices.end();
+          subspaces_->GetCell(from_cell_ind).IsCellConnected(to_cell_ind);
+      bool backward_connected =
+          subspaces_->GetCell(to_cell_ind).IsCellConnected(from_cell_ind);
 
       if (connected_in_keypose_graph)
       {
@@ -1836,7 +1830,8 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
     std::vector<rclcpp::Client<tare_planner::srv::RequestPath>::SharedPtr>& request_path_client_list_, // 替换为ROS2
     std::shared_ptr<keypose_graph_ns::KeyposeGraph>& keypose_graph,
     std::shared_ptr<merger_graph_ns::MergerGraph>& merger_graph,
-    std::map<int, geometry_msgs::msg::Point>& other_robot_position_map)
+    std::map<int, geometry_msgs::msg::Point>& other_robot_position_map,
+    std::shared_ptr<skeleton_graph_ns::SkeletonGraph>& skeleton_graph)
 {
   const bool debug = true;
 
@@ -2158,12 +2153,28 @@ exploration_path_ns::ExplorationPath GridWorld::SolveGlobalMdvrp_merger_graph(
       }
       else
       {
-        // Use keypose graph   使用关键位姿图
-        nav_msgs::msg::Path path_tmp;
-        distance_matrix_world[i][j] = static_cast<int>(
-            10 * merger_graph->GetShortestPath(exploring_cell_positions_world[i], exploring_cell_positions_world[j],
-                                               false, path_tmp, true));  //在 关键位姿图上   找到最短距离       true
-                                                                         //使用  连接点  考虑  高度约束
+        // 骨架图加速：优先用全源最短路径缓存
+        bool used_skeleton = false;
+        if (skeleton_graph && skeleton_graph_ns::SkeletonGraph::enabled_ &&
+            skeleton_graph->IsCellInGraph(exploring_cell_indices_world[i]) &&
+            skeleton_graph->IsCellInGraph(exploring_cell_indices_world[j]))
+        {
+          double dist = skeleton_graph->GetShortestPathDist(
+              exploring_cell_indices_world[i], exploring_cell_indices_world[j]);
+          if (dist > 0)  // valid path found (>0), skip DBL_MAX / -1
+          {
+            distance_matrix_world[i][j] = static_cast<int>(10 * dist);
+            used_skeleton = true;
+          }
+        }
+        if (!used_skeleton)
+        {
+          // 回退到 merger graph 路径搜索
+          nav_msgs::msg::Path path_tmp;
+          distance_matrix_world[i][j] = static_cast<int>(
+              10 * merger_graph->GetShortestPath(exploring_cell_positions_world[i], exploring_cell_positions_world[j],
+                                                 false, path_tmp, true));
+        }
       }
     }
   }

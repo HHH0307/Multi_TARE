@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # 打印开始信息
-echo "开始编译工作空间，使用参数：--symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
+echo "开始编译工作空间"
 echo "----------------------------------------"
 
 # 执行编译命令
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-w"
 
 # 检查编译结果
 if [ $? -eq 0 ]; then

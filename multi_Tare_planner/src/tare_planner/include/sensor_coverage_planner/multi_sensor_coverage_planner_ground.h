@@ -56,6 +56,7 @@
 #include "local_coverage_planner/local_coverage_planner.h"
 #include "tare_visualizer/multi_tare_visualizer.h"
 #include "rolling_occupancy_grid/rolling_occupancy_grid.h"
+#include "skeleton_graph/skeleton_graph.h"  // 拓扑骨架图加速
 
 // 新增 服务定义的数据
 #include "tare_planner/srv/request_path.hpp"
@@ -175,6 +176,7 @@ private:
   std::shared_ptr<keypose_graph_ns::KeyposeGraph> keypose_graph_;
   //  新增    拼接图    merger_graph_  继承于   keypose_graph_     改动  使用  ikd 树做搜索  加快
   std::shared_ptr<merger_graph_ns::MergerGraph> merger_graph_;  // 全局的拼接图  接受所有  机器人的  keypose_graph_
+  std::shared_ptr<skeleton_graph_ns::SkeletonGraph> skeleton_graph_;  // 骨架图加速
   std::shared_ptr<planning_env_ns::PlanningEnv> planning_env_;
   std::shared_ptr<viewpoint_manager_ns::ViewPointManager> viewpoint_manager_;
   std::shared_ptr<local_coverage_planner_ns::LocalCoveragePlanner> local_coverage_planner_;
@@ -193,6 +195,10 @@ private:
   //新增   子网格融合图      的  可视化
   std::shared_ptr<misc_utils_ns::Marker> MTSP_grid_graph_node_marker_;
   std::shared_ptr<misc_utils_ns::Marker> MTSP_grid_graph_edge_marker_;
+
+  // 骨架图可视化
+  std::shared_ptr<misc_utils_ns::Marker> skeleton_graph_node_marker_;
+  std::shared_ptr<misc_utils_ns::Marker> skeleton_graph_edge_marker_;
 
   bool keypose_cloud_update_;
   bool initialized_;

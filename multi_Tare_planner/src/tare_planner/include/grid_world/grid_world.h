@@ -34,7 +34,9 @@
 #include "tare_planner/srv/request_path.hpp" // 新增 服务定义的数据 
 
 #include "tare_planner/msg/subgraph.hpp"  // 新增  话题定义的数据
+#include "skeleton_graph/skeleton_graph.h"  //骨架图
 #include <unordered_map>
+#include <unordered_set>
 
 
 namespace viewpoint_manager_ns
@@ -349,7 +351,10 @@ public:
     explicit Cell(const geometry_msgs::msg::Point& center);
     ~Cell() = default;
     
-    bool IsCellConnected(int cell_ind);  //单元是否连接
+    bool IsCellConnected(int cell_ind)  // O(1) 通过set查找
+    {
+        return connected_cell_set_.find(cell_ind) != connected_cell_set_.end();
+    }
     void AddViewPoint(int viewpoint_ind)    //  增加 视点
     {
         viewpoint_indices_.push_back(viewpoint_ind);  //放入视点容器里面
@@ -363,6 +368,7 @@ public:
     void AddConnectedCell(int cell_ind)  //增加连接的单元ID
     {
         connected_cell_indices_.push_back(cell_ind);
+        connected_cell_set_.insert(cell_ind);
         misc_utils_ns::UniquifyIntVector(connected_cell_indices_);
     }
 
@@ -387,6 +393,7 @@ public:
     void ClearConnectedCellIndices()
     {
         connected_cell_indices_.clear();
+        connected_cell_set_.clear();
     }
 
     //新增  long_term_connected_cell_indices_  的清空函数
@@ -618,6 +625,7 @@ private:
     std::vector<int> viewpoint_indices_;
     // Indices of other cells that are connected by a path.      通过一个路径与其他单元相连的单元ID
     std::vector<int> connected_cell_indices_;
+    std::unordered_set<int> connected_cell_set_;  // O(1)查找
     // Indices of connected keypose graph nodes   关键位姿图上的 相连结点的ID  连通的  结点  索引
     std::vector<int> keypose_graph_node_indices_;
     //网格  新增属性    拼接图  在  这个网里面  存在的 节点  编号  用于 快速查找    merger_graph_  中相同的节点  做节点  融合
@@ -696,6 +704,7 @@ public:
     void GetNeighborCellIndices(const geometry_msgs::msg::Point& position, const Eigen::Vector3i& neighbor_range,
                               std::vector<int>& neighbor_indices);  //得到给定位置的   邻接单元ID
     void GetExploringCellIndices(std::vector<int>& exploring_cell_indices);  //得到探索单元的ID
+    std::vector<int> GetCellConnectedCellIndices(int cell_ind);  //获取单元的连接单元ID列表
     CellStatus GetCellStatus(int cell_ind);  //得到单元状态
     CellStatus GetCellStatus_world(int cell_ind);  //得到单元状态
     void SetCellStatus(int cell_ind, CellStatus status);  //设置单元状态
@@ -708,7 +717,7 @@ public:
     void Reset();
     int GetCellStatusCount(grid_world_ns::CellStatus status);  //得到单元状态数量
     //修改状态改变
-    void UpdateCellStatus_(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager);   //更新单元状态  通过视点管理类    
+    void UpdateCellStatus_(const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager);   //更新单元状态  通过视点管理类
 
     // 新增 修改  使用  merger  graph  做
     exploration_path_ns::ExplorationPath SolveGlobalMdvrp_merger_graph(
@@ -718,7 +727,8 @@ public:
         std::vector<rclcpp::Client<tare_planner::srv::RequestPath>::SharedPtr>& request_path_client_list_,
         std::shared_ptr<keypose_graph_ns::KeyposeGraph> &keypose_graph,
         std::shared_ptr<merger_graph_ns::MergerGraph> &merger_graph,
-        std::map<int,geometry_msgs::msg::Point>&  other_robot_position_map);
+        std::map<int,geometry_msgs::msg::Point>&  other_robot_position_map,
+        std::shared_ptr<skeleton_graph_ns::SkeletonGraph>& skeleton_graph);
 
     inline void SetCurKeyposeGraphNodeInd(int node_ind) //设置当前关键位姿图结点ID
     {
@@ -796,7 +806,7 @@ public:
     //新增分配策略  
     std::string allocation_strategy_;
     
-    double GetkCellSize()
+    double GetkCellSize() const
     {
         return kCellSize;
     }

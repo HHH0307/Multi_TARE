@@ -133,10 +133,15 @@ add_library(multi_tare_visualizer src/tare_visualizer/multi_tare_visualizer.cpp)
 ament_target_dependencies(multi_tare_visualizer rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2 pcl_ros pcl_conversions visualization_msgs)
 target_link_libraries(multi_tare_visualizer ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} grid_world misc_utils)
 
+# 骨架图（拓扑骨架，用于加速全局路径搜索）
+add_library(skeleton_graph src/skeleton_graph/skeleton_graph.cpp)
+ament_target_dependencies(skeleton_graph rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
+target_link_libraries(skeleton_graph ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} ${PCL_LIBRARIES} grid_world merger_graph keypose_graph misc_utils)
+
 # 新增
 add_library(multi_sensor_coverage_planner_ground src/sensor_coverage_planner/multi_sensor_coverage_planner_ground.cpp)
 ament_target_dependencies(multi_sensor_coverage_planner_ground rclcpp std_msgs nav_msgs geometry_msgs sensor_msgs tf2_ros tf2_geometry_msgs tf2)
-target_link_libraries(multi_sensor_coverage_planner_ground ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} graph planning_env keypose_graph merger_graph viewpoint_manager pointcloud_manager grid_world local_coverage_planner multi_tare_visualizer)
+target_link_libraries(multi_sensor_coverage_planner_ground ${PROJECT_NAME}__rosidl_typesupport_cpp ${catkin_LIBRARIES} graph planning_env keypose_graph merger_graph viewpoint_manager pointcloud_manager grid_world local_coverage_planner multi_tare_visualizer skeleton_graph)
 
 
 

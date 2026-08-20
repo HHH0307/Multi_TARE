@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <queue>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -83,6 +84,11 @@ private:
   std::vector<std::vector<int>> graph_;
   std::vector<std::vector<double>> dist_;
   std::vector<KeyposeNode> nodes_;
+  // O(1) 边查找：存储<min_ind, max_ind>对
+  std::unordered_set<uint64_t> edge_set_;
+  // KD-tree脏标记：只在图结构变化时才重建
+  bool nodes_kdtree_dirty_ = true;
+  bool connected_kdtree_dirty_ = true;
   pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtree_connected_nodes_;
   pcl::PointCloud<pcl::PointXYZI>::Ptr connected_nodes_cloud_;
   pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtree_nodes_;
@@ -138,7 +144,16 @@ public:
   void UpdateNodes();
   void CheckConnectivity(const geometry_msgs::msg::Point& robot_position);
   int AddKeyposeNode(const nav_msgs::msg::Odometry& keypose, const planning_env_ns::PlanningEnv& planning_env);
-  bool HasEdgeBetween(int node_ind1, int node_ind2);
+  bool HasEdgeBetween(int node_ind1, int node_ind2)
+  {
+    if (node_ind1 < 0 || node_ind2 < 0 ||
+        node_ind1 >= static_cast<int>(nodes_.size()) || node_ind2 >= static_cast<int>(nodes_.size()))
+      return false;
+    uint64_t min_ind = std::min(node_ind1, node_ind2);
+    uint64_t max_ind = std::max(node_ind1, node_ind2);
+    uint64_t key = (min_ind << 32) | max_ind;
+    return edge_set_.find(key) != edge_set_.end();
+  }
   bool IsConnected(const Eigen::Vector3d& from_position, const Eigen::Vector3d& to_position);
   int AddNonKeyposeNode(const geometry_msgs::msg::Point& new_node_position);
   void AddPath(const nav_msgs::msg::Path& path);
@@ -218,6 +233,14 @@ public:
 
   void DeleteEdge(int node_1, int node_2)
   {
+    // O(1)从edge_set_移除
+    uint64_t min_ind = std::min(static_cast<uint64_t>(node_1), static_cast<uint64_t>(node_2));
+    uint64_t max_ind = std::max(static_cast<uint64_t>(node_1), static_cast<uint64_t>(node_2));
+    uint64_t key = (min_ind << 32) | max_ind;
+    edge_set_.erase(key);
+    nodes_kdtree_dirty_ = true;
+    connected_kdtree_dirty_ = true;
+
     for (size_t j = 0; j < graph_[node_1].size(); j++)
     {
       if (graph_[node_1][j] == node_2)

@@ -36,6 +36,8 @@ KeyposeGraph::KeyposeGraph()
   , kAddEdgeToLastKeyposeDistThr(3.0)
   , kAddEdgeVerticalThreshold(1.0)
   , kAddEdgeCollisionCheckPointNumThr(1)
+  , nodes_kdtree_dirty_(true)
+  , connected_kdtree_dirty_(true)
 {
   kdtree_connected_nodes_ = pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr(new pcl::KdTreeFLANN<pcl::PointXYZI>());
   connected_nodes_cloud_ = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
@@ -58,6 +60,8 @@ KeyposeGraph::KeyposeGraph(rclcpp::Node::SharedPtr nh)
   , kAddEdgeToLastKeyposeDistThr(3.0)
   , kAddEdgeVerticalThreshold(1.0)
   , kAddEdgeCollisionCheckPointNumThr(1)
+  , nodes_kdtree_dirty_(true)
+  , connected_kdtree_dirty_(true)
 {
   ReadParameters(nh);
   kdtree_connected_nodes_ = pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr(new pcl::KdTreeFLANN<pcl::PointXYZI>());
@@ -94,6 +98,8 @@ void KeyposeGraph::AddNode(const geometry_msgs::msg::Point& position, int node_i
   graph_.push_back(neighbors);
   std::vector<double> neighbor_dist;
   dist_.push_back(neighbor_dist);
+  nodes_kdtree_dirty_ = true;
+  connected_kdtree_dirty_ = true;
 
   // 添加节点信息到共享信息
   tare_planner::msg::SharedNode new_shared_node;
@@ -140,6 +146,13 @@ void KeyposeGraph::AddEdge(int from_node_ind, int to_node_ind, double dist)
   dist_[from_node_ind].push_back(dist);
   dist_[to_node_ind].push_back(dist);
 
+  // O(1) edge set维护
+  uint64_t min_ind = std::min(static_cast<uint64_t>(from_node_ind), static_cast<uint64_t>(to_node_ind));
+  uint64_t max_ind = std::max(static_cast<uint64_t>(from_node_ind), static_cast<uint64_t>(to_node_ind));
+  edge_set_.insert((min_ind << 32) | max_ind);
+  nodes_kdtree_dirty_ = true;
+  connected_kdtree_dirty_ = true;
+
   // 添加边  信息
   tare_planner::msg::SharedEdge new_edge;
   if (from_node_ind > to_node_ind)
@@ -176,25 +189,7 @@ bool KeyposeGraph::HasNode(const Eigen::Vector3d& position)
   return false;
 }
 
-bool KeyposeGraph::HasEdgeBetween(int node_ind1, int node_ind2)
-{
-  if (node_ind1 >= 0 && node_ind1 < nodes_.size() && node_ind2 >= 0 && node_ind2 < nodes_.size())
-  {
-    if (std::find(graph_[node_ind1].begin(), graph_[node_ind1].end(), node_ind2) != graph_[node_ind1].end() ||
-        std::find(graph_[node_ind2].begin(), graph_[node_ind2].end(), node_ind1) != graph_[node_ind2].end())
-    {
-      return true;
-    }
-    else
-    {
-      return false;
-    }
-  }
-  else
-  {
-    return false;
-  }
-}
+// HasEdgeBetween is now inline in the header with O(1) edge_set_ lookup
 
 bool KeyposeGraph::IsConnected(const Eigen::Vector3d& from_position, const Eigen::Vector3d& to_position)
 {
@@ -253,6 +248,8 @@ int KeyposeGraph::AddNonKeyposeNode(const geometry_msgs::msg::Point& new_node_po
   graph_.push_back(neighbors);
   std::vector<double> neighbor_dist;
   dist_.push_back(neighbor_dist);
+  nodes_kdtree_dirty_ = true;
+  connected_kdtree_dirty_ = true;
 
   // 新增 节点
   //   添加 节点  给  Shared_Infor_ 添加  节点信息
@@ -291,6 +288,13 @@ void KeyposeGraph::AddPath(const nav_msgs::msg::Path& path)
 
           dist_[prev_node_index].push_back(dist_to_prev);
           dist_[cur_node_index].push_back(dist_to_prev);
+
+          // O(1) edge_set_
+          uint64_t mn = std::min(static_cast<uint64_t>(prev_node_index), static_cast<uint64_t>(cur_node_index));
+          uint64_t mx = std::max(static_cast<uint64_t>(prev_node_index), static_cast<uint64_t>(cur_node_index));
+          edge_set_.insert((mn << 32) | mx);
+          nodes_kdtree_dirty_ = true;
+          connected_kdtree_dirty_ = true;
 
           // 添加边信息到共享数据
           tare_planner::msg::SharedEdge new_edge;
@@ -427,22 +431,50 @@ void KeyposeGraph::GetConnectedNodeIndices(int query_ind, std::vector<int>& conn
 void KeyposeGraph::CheckLocalCollision(const geometry_msgs::msg::Point& robot_position,
                                        const std::shared_ptr<viewpoint_manager_ns::ViewPointManager>& viewpoint_manager)
 {
-  // Get local planning horizon xy size
   int in_local_planning_horizon_count = 0;
   int collision_node_count = 0;
   int collision_edge_count = 0;
   int in_viewpoint_range_count = 0;
   Eigen::Vector3d viewpoint_resolution = viewpoint_manager->GetResolution();
   double max_z_diff = std::max(viewpoint_resolution.x(), viewpoint_resolution.y()) * 2;
-  for (int i = 0; i < nodes_.size(); i++)
+
+  // 用KD-tree做空间剪枝：只检查局部规划范围内的节点
+  UpdateNodes();  // 确保KD-tree是最新的（只在脏时重建）
+  pcl::PointXYZI search_point;
+  search_point.x = robot_position.x;
+  search_point.y = robot_position.y;
+  search_point.z = robot_position.z;
+  std::vector<int> nearby_indices;
+  std::vector<float> nearby_distances;
+  double search_radius = viewpoint_manager->GetLocalPlanningHorizonSize().x();
+  if (nodes_cloud_->points.size() > 0 && kdtree_nodes_)
   {
-    if (nodes_[i].is_keypose_)
+    kdtree_nodes_->radiusSearch(search_point, search_radius, nearby_indices, nearby_distances);
+  }
+  // 如果KD-tree搜索失败或结果为空，回退到全量遍历
+  std::vector<int> node_indices_to_check;
+  if (nearby_indices.empty())
+  {
+    for (int i = 0; i < nodes_.size(); i++) node_indices_to_check.push_back(i);
+  }
+  else
+  {
+    for (auto& kd_ind : nearby_indices)
+    {
+      int node_ind = static_cast<int>(nodes_cloud_->points[kd_ind].intensity);
+      node_indices_to_check.push_back(node_ind);
+    }
+  }
+
+  for (int idx : node_indices_to_check)
+  {
+    if (nodes_[idx].is_keypose_)
     {
       continue;
     }
 
     Eigen::Vector3d node_position =
-        Eigen::Vector3d(nodes_[i].position_.x, nodes_[i].position_.y, nodes_[i].position_.z);
+        Eigen::Vector3d(nodes_[idx].position_.x, nodes_[idx].position_.y, nodes_[idx].position_.z);
     int viewpoint_ind = viewpoint_manager->GetViewPointInd(node_position);
     bool node_in_collision = false;
     if (viewpoint_manager->InRange(viewpoint_ind) &&
@@ -454,46 +486,34 @@ void KeyposeGraph::CheckLocalCollision(const geometry_msgs::msg::Point& robot_po
       {
         node_in_collision = true;
         collision_node_count++;
-        // Delete all the associated edges
-        for (int j = 0; j < graph_[i].size(); j++)
+        // Delete all associated edges via DeleteEdge (syncs edge_set_)
+        std::vector<int> neighbors_copy = graph_[idx];
+        for (int neighbor_ind : neighbors_copy)
         {
-          int neighbor_ind = graph_[i][j];
-          for (int k = 0; k < graph_[neighbor_ind].size(); k++)
+          DeleteEdge(idx, neighbor_ind);
+          // 记录要删除的边信息
+          tare_planner::msg::SharedEdge new_edge;
+          if (idx > neighbor_ind)
           {
-            if (graph_[neighbor_ind][k] == i)
-            {
-              graph_[neighbor_ind].erase(graph_[neighbor_ind].begin() + k);
-              dist_[neighbor_ind].erase(dist_[neighbor_ind].begin() + k);
-              k--;
-
-              // 记录要删除的边信息
-              tare_planner::msg::SharedEdge new_edge;
-              if (i > neighbor_ind)
-              {
-                new_edge.node_index_min = neighbor_ind;
-                new_edge.node_index_max = i;
-              }
-              else
-              {
-                new_edge.node_index_min = i;
-                new_edge.node_index_max = neighbor_ind;
-              }
-              Shared_Infor_.delete_edge_set.push_back(new_edge);
-
-            }
+            new_edge.node_index_min = neighbor_ind;
+            new_edge.node_index_max = idx;
           }
+          else
+          {
+            new_edge.node_index_min = idx;
+            new_edge.node_index_max = neighbor_ind;
+          }
+          Shared_Infor_.delete_edge_set.push_back(new_edge);
         }
-        graph_[i].clear();
-        dist_[i].clear();
       }
       else
       {
-        Eigen::Vector3d viewpoint_resolution = viewpoint_manager->GetResolution();
-        double collision_check_resolution = std::min(viewpoint_resolution.x(), viewpoint_resolution.y()) / 2;
+        Eigen::Vector3d vp_resolution = viewpoint_manager->GetResolution();
+        double collision_check_resolution = std::min(vp_resolution.x(), vp_resolution.y()) / 2;
         // Check edge collision
-        for (int j = 0; j < graph_[i].size(); j++)
+        for (int j = 0; j < graph_[idx].size(); j++)
         {
-          int neighbor_ind = graph_[i][j];
+          int neighbor_ind = graph_[idx][j];
           Eigen::Vector3d start_position = node_position;
           Eigen::Vector3d end_position = Eigen::Vector3d(
               nodes_[neighbor_ind].position_.x, nodes_[neighbor_ind].position_.y, nodes_[neighbor_ind].position_.z);
@@ -506,35 +526,21 @@ void KeyposeGraph::CheckLocalCollision(const geometry_msgs::msg::Point& robot_po
             {
               if (viewpoint_manager->ViewPointInCollision(viewpoint_ind))
               {
-                geometry_msgs::msg::Point viewpoint_position = viewpoint_manager->GetViewPointPosition(viewpoint_ind);
-                // Delete neighbors' edges
-                for (int k = 0; k < graph_[neighbor_ind].size(); k++)
+                collision_edge_count++;
+                DeleteEdge(idx, neighbor_ind);
+                // 记录要删除的边信息
+                tare_planner::msg::SharedEdge new_edge;
+                if (idx > neighbor_ind)
                 {
-                  if (graph_[neighbor_ind][k] == i)
-                  {
-                    collision_edge_count++;
-                    graph_[neighbor_ind].erase(graph_[neighbor_ind].begin() + k);
-                    dist_[neighbor_ind].erase(dist_[neighbor_ind].begin() + k);
-                    k--;
-
-                    // 记录要删除的边信息
-                    tare_planner::msg::SharedEdge new_edge;
-                    if (i > neighbor_ind)
-                    {
-                      new_edge.node_index_min = neighbor_ind;
-                      new_edge.node_index_max = i;
-                    }
-                    else
-                    {
-                      new_edge.node_index_min = i;
-                      new_edge.node_index_max = neighbor_ind;
-                    }
-                    Shared_Infor_.delete_edge_set.push_back(new_edge);
-                  }
+                  new_edge.node_index_min = neighbor_ind;
+                  new_edge.node_index_max = idx;
                 }
-                // Delete the node's edge
-                graph_[i].erase(graph_[i].begin() + j);
-                dist_[i].erase(dist_[i].begin() + j);
+                else
+                {
+                  new_edge.node_index_min = idx;
+                  new_edge.node_index_max = neighbor_ind;
+                }
+                Shared_Infor_.delete_edge_set.push_back(new_edge);
                 j--;
                 break;
               }
@@ -589,35 +595,25 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
         collision_node_count++;
         
         // 删除所有关联的边
-        for (size_t j = 0; j < graph_[i].size(); j++)
+        // 收集邻居列表再删除，避免迭代中修改容器
+        std::vector<int> neighbors_to_delete = graph_[i];
+        for (int neighbor : neighbors_to_delete)
         {
-          int neighbor_ind = graph_[i][j];
-          for (size_t k = 0; k < graph_[neighbor_ind].size(); k++)
+          DeleteEdge(i, neighbor);
+          // 记录到共享信息（DeleteEdge不会添加共享信息）
+          tare_planner::msg::SharedEdge new_edge;
+          if (i > neighbor)
           {
-            if (graph_[neighbor_ind][k] == i)
-            {
-              graph_[neighbor_ind].erase(graph_[neighbor_ind].begin() + k);
-              dist_[neighbor_ind].erase(dist_[neighbor_ind].begin() + k);
-              k--;  // 调整索引
-              
-              // 记录要删除的边信息
-              tare_planner::msg::SharedEdge new_edge;
-              if (i > neighbor_ind)
-              {
-                new_edge.node_index_min = neighbor_ind;
-                new_edge.node_index_max = i;
-              }
-              else
-              {
-                new_edge.node_index_min = i;
-                new_edge.node_index_max = neighbor_ind;
-              }
-              Shared_Infor_.delete_edge_set.push_back(new_edge);
-
-              // 添加到要删除的边集合
-              delete_edge_set.emplace_back(i, neighbor_ind);
-            }
+            new_edge.node_index_min = neighbor;
+            new_edge.node_index_max = i;
           }
+          else
+          {
+            new_edge.node_index_min = i;
+            new_edge.node_index_max = neighbor;
+          }
+          Shared_Infor_.delete_edge_set.push_back(new_edge);
+          delete_edge_set.emplace_back(i, neighbor);
         }
         graph_[i].clear();
         dist_[i].clear();
@@ -653,40 +649,23 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
             {
               if (viewpoint_manager->ViewPointInCollision(viewpoint_ind))  // 插值点处于碰撞中
               {
-                geometry_msgs::msg::Point viewpoint_position =
-                    viewpoint_manager->GetViewPointPosition(viewpoint_ind);
-
-                // 删除邻居节点的边
-                for (size_t k = 0; k < graph_[neighbor_ind].size(); k++)
+                collision_edge_count++;
+                DeleteEdge(i, neighbor_ind);
+                // 记录到共享信息
+                tare_planner::msg::SharedEdge new_edge;
+                if (i > neighbor_ind)
                 {
-                  if (graph_[neighbor_ind][k] == i)
-                  {
-                    collision_edge_count++;
-                    graph_[neighbor_ind].erase(graph_[neighbor_ind].begin() + k);
-                    dist_[neighbor_ind].erase(dist_[neighbor_ind].begin() + k);
-                    k--;  // 调整索引
-
-                    // 记录要删除的边信息
-                    tare_planner::msg::SharedEdge new_edge;
-                    if (i > neighbor_ind)
-                    {
-                      new_edge.node_index_min = neighbor_ind;
-                      new_edge.node_index_max = i;
-                    }
-                    else
-                    {
-                      new_edge.node_index_min = i;
-                      new_edge.node_index_max = neighbor_ind;
-                    }
-                    Shared_Infor_.delete_edge_set.push_back(new_edge);
-                    delete_edge_set.emplace_back(i, neighbor_ind);
-                  }
+                  new_edge.node_index_min = neighbor_ind;
+                  new_edge.node_index_max = i;
                 }
-                
-                // 删除当前节点的边
-                graph_[i].erase(graph_[i].begin() + j);
-                dist_[i].erase(dist_[i].begin() + j);
-                j--;  // 调整索引
+                else
+                {
+                  new_edge.node_index_min = i;
+                  new_edge.node_index_max = neighbor_ind;
+                }
+                Shared_Infor_.delete_edge_set.push_back(new_edge);
+                delete_edge_set.emplace_back(i, neighbor_ind);
+                j--;  // 调整索引（edge was deleted from graph_[i] by DeleteEdge）
                 break;
               }
             }
@@ -700,6 +679,7 @@ void KeyposeGraph::CheckLocalCollisionMergerGraph(
 
 void KeyposeGraph::UpdateNodes()
 {
+  if (!nodes_kdtree_dirty_) return;  // 脏标记：无变化则跳过
   nodes_cloud_->clear();
   for (int i = 0; i < nodes_.size(); i++)
   {
@@ -714,6 +694,7 @@ void KeyposeGraph::UpdateNodes()
   {
     kdtree_nodes_->setInputCloud(nodes_cloud_);
   }
+  nodes_kdtree_dirty_ = false;
 }
 
 void KeyposeGraph::CheckConnectivity(const geometry_msgs::msg::Point& robot_position)
@@ -722,7 +703,7 @@ void KeyposeGraph::CheckConnectivity(const geometry_msgs::msg::Point& robot_posi
   {
     return;
   }
-  UpdateNodes();
+  UpdateNodes();  // 只在脏时重建
 
   // The first keypose node is always connected, set all the others to be disconnected
   int first_keypose_node_ind = 0; // -1
@@ -785,6 +766,7 @@ void KeyposeGraph::CheckConnectivity(const geometry_msgs::msg::Point& robot_posi
   {
     kdtree_connected_nodes_->setInputCloud(connected_nodes_cloud_);
   }
+  connected_kdtree_dirty_ = false;
 }
 
 int KeyposeGraph::AddKeyposeNode(const nav_msgs::msg::Odometry& keypose, const planning_env_ns::PlanningEnv& planning_env)
@@ -872,8 +854,7 @@ int KeyposeGraph::AddKeyposeNode(const nav_msgs::msg::Odometry& keypose, const p
             {
               // Collision check
               KeyposeNode neighbor_node = nodes_[in_range_ind];
-              if (std::find(graph_[new_node_ind].begin(), graph_[new_node_ind].end(), in_range_ind) !=
-                  graph_[new_node_ind].end())
+              if (HasEdgeBetween(new_node_ind, in_range_ind))
                 continue;
               double neighbor_node_dist = in_range_node_dist[idx];
               double diff_x = neighbor_node.position_.x - current_keypose_position_.x;

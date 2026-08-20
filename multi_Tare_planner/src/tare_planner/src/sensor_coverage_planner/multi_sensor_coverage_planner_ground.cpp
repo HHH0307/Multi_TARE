@@ -133,6 +133,7 @@ void SensorCoveragePlanner3D::ReadParameters() {
 
   // tare_visualizer
   this->declare_parameter<bool>("kExploringSubspaceMarkerColorGradientAlpha", true);
+  this->declare_parameter<bool>("use_skeleton_graph", true);  // 骨架图加速开关
   this->declare_parameter<double>("kExploringSubspaceMarkerColorMaxAlpha", 1.0);
   this->declare_parameter<double>("kExploringSubspaceMarkerColorR", 0.0);
   this->declare_parameter<double>("kExploringSubspaceMarkerColorG", 1.0);
@@ -280,6 +281,7 @@ void SensorCoveragePlanner3D::InitializeData() {
   local_coverage_planner_->SetViewPointManager(viewpoint_manager_);
   keypose_graph_ = std::make_shared<keypose_graph_ns::KeyposeGraph>(shared_from_this());
   merger_graph_ = std::make_shared<merger_graph_ns::MergerGraph>(shared_from_this());  //新增 关键位姿图
+  skeleton_graph_ = std::make_shared<skeleton_graph_ns::SkeletonGraph>();  //骨架图加速
 
   grid_world_ = std::make_shared<grid_world_ns::GridWorld>(shared_from_this());
   grid_world_->SetUseKeyposeGraph(true);
@@ -334,6 +336,16 @@ void SensorCoveragePlanner3D::InitializeData() {
   MTSP_grid_graph_edge_marker_->SetType(visualization_msgs::msg::Marker::LINE_LIST);
   MTSP_grid_graph_edge_marker_->SetScale(0.05, 0.0, 0.0);
   MTSP_grid_graph_edge_marker_->SetColorRGBA(1.0, 1.0, 0.0, 0.9);
+
+  // 骨架图可视化
+  skeleton_graph_node_marker_ = std::make_shared<misc_utils_ns::Marker>(shared_from_this(), "skeleton_graph_node_marker", robot_name+"/"+kWorldFrameID);
+  skeleton_graph_node_marker_->SetType(visualization_msgs::msg::Marker::POINTS);
+  skeleton_graph_node_marker_->SetScale(0.5, 0.5, 0.1);
+  skeleton_graph_node_marker_->SetColorRGBA(0.0, 1.0, 1.0, 1.0);
+  skeleton_graph_edge_marker_ = std::make_shared<misc_utils_ns::Marker>(shared_from_this(), "skeleton_graph_edge_marker", robot_name+"/"+kWorldFrameID);
+  skeleton_graph_edge_marker_->SetType(visualization_msgs::msg::Marker::LINE_LIST);
+  skeleton_graph_edge_marker_->SetScale(0.08, 0.0, 0.0);
+  skeleton_graph_edge_marker_->SetColorRGBA(0.0, 1.0, 1.0, 0.7);
 
   robot_yaw_ = 0.0;
   lookahead_point_direction_ = Eigen::Vector3d(1.0, 0.0, 0.0);
@@ -392,6 +404,13 @@ bool SensorCoveragePlanner3D::initialize() {
 
   robot_id_ = (int)robot_name.back() - (int)('0');
   grid_world_->allocation_strategy_ = allocation_strategy_;
+
+  // 读取骨架图开关
+  bool use_skeleton;
+  this->get_parameter("use_skeleton_graph", use_skeleton);
+  skeleton_graph_ns::SkeletonGraph::enabled_ = use_skeleton;
+  RCLCPP_INFO(this->get_logger(), "Skeleton graph: %s", use_skeleton ? "enabled" : "disabled");
+
   keypose_graph_->SetAllowVerticalEdge(false);
   merger_graph_->SetAllowVerticalEdge(false);
 
@@ -1207,8 +1226,8 @@ void SensorCoveragePlanner3D::GlobalPlanning_grid_merger_graph(std::vector<int>&
       request_path_client_list_,       // 请求路径服务端（ROS2服务客户端列表）
       keypose_graph_,              // 关键位姿图
       merger_graph_,               // 全局拼接图
-      other_robot_position_map_);      // 其他机器人位置映射
-
+      other_robot_position_map_,       // 其他机器人位置映射
+      skeleton_graph_);            // 骨架图加速
   global_tsp_timer.Stop(false);
   global_planning_runtime_ = global_tsp_timer.GetDuration("ms");
 
@@ -2536,6 +2555,21 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     GlobalStatuUpdate();
 
     UpdateMergerGraph();
+
+    // 骨架图增量更新（只在单元数变化时重建）
+    if (skeleton_graph_ns::SkeletonGraph::enabled_)
+    {
+      skeleton_graph_->UpdateFromGridWorld(*grid_world_);
+      // 发布骨架图可视化
+      if (skeleton_graph_->GetNodeNum() > 0)
+      {
+        skeleton_graph_->GetMarker(skeleton_graph_node_marker_->marker_,
+                                    skeleton_graph_edge_marker_->marker_);
+        skeleton_graph_node_marker_->Publish();
+        skeleton_graph_edge_marker_->Publish();
+      }
+    }
+
     exploration_path_ns::ExplorationPath local_path;
     exploration_path_ns::ExplorationPath local_path_sort;
     std::vector<exploration_path_ns::ExplorationPath> near_localcoverage_subgrid_paths;
@@ -2544,8 +2578,8 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     local_path_sort = SortLocalPath(local_path);
     bool is_global_tsp = Is_Global_Planner(local_path_sort);
     last_isglobal_tsp_ = is_global_tsp;
-    std::vector<int> global_cell_tsp_order;            
-    exploration_path_ns::ExplorationPath global_path;  
+    std::vector<int> global_cell_tsp_order;
+    exploration_path_ns::ExplorationPath global_path;
     GlobalPlanning_grid_merger_graph(global_cell_tsp_order, global_path, is_global_tsp);
     robot_statu_ = grid_world_->GetRobotStatu();
     tare_planner::msg::ReturnHome Return_home_msg;
