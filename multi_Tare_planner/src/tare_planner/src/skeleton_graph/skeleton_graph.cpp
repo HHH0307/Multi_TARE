@@ -46,8 +46,13 @@ int SkeletonGraph::SelectRepresentativeMergerNode(
     // 只选 connected 节点（保证可通行）
     if (!merger_graph.GetNodeIsConnected(mg_ind)) continue;
     geometry_msgs::msg::Point mg_pos = merger_graph.GetNodePosition(mg_ind);
+    if (!std::isfinite(mg_pos.x) || !std::isfinite(mg_pos.y) || !std::isfinite(mg_pos.z)) continue;
+    // 阶段 6.2: 防止陈旧 cell 节点索引把代表节点选到其他 cell 或地图范围外。
+    if (grid_world.GetCellInd(mg_pos.x, mg_pos.y, mg_pos.z) != cell_ind) continue;
     Eigen::Vector3d p(mg_pos.x, mg_pos.y, mg_pos.z);
     double d = (p - cell_center).norm();
+    // GetCellInd 反向映射已完成严格 cell 一致性验证；不再额外使用仅基于 XY cell_size
+    // 的三维距离阈值，避免楼层高度或 z 分辨率不同造成合法节点被误删。
     if (d < best_dist) {
       best_dist = d;
       best_mg_ind = mg_ind;
@@ -77,18 +82,19 @@ void SkeletonGraph::BuildFromScratch(
   std::vector<int> exploring_cells;
   grid_world.GetExploringAndCoveredCellIndicesWorld(exploring_cells);
 
-  // Phase 1: 为每个 cell 选取 merger_graph 代表节点并创建骨架节点
+  // Phase 1: 为每个 cell 选取合法 merger_graph 代表节点并创建骨架节点
   for (int cell_ind : exploring_cells) {
     AddCellNode(grid_world, merger_graph, cell_ind);
   }
 
-  // Phase 2: 构建邻接边（基于 GridWorld 的 cell 邻接关系）
+  // Phase 2: 使用长期 cell 连接构建稳定骨架边，并验证 merger_graph 真实跨 cell 连接
   for (int cell_ind : exploring_cells) {
-    AddEdgesForCell(grid_world, cell_ind);
+    AddEdgesForCell(grid_world, merger_graph, cell_ind);
   }
 
-  // 阶段 3.2: 度数过滤骨架化——移除非边界叶子节点
-  PruneLeafNodes(grid_world);
+  // 阶段 6.3: 暂停旧的叶子裁剪。connected.size()<6 不是可靠的 frontier 判定，
+  // 会误删有效拓扑节点并造成断线。待后续基于真实几何邻域或割点重新实现。
+  // PruneLeafNodes(grid_world);
 
   // 阶段 2.5: 大节点数降级保护
   if (static_cast<int>(nodes_.size()) > kMaxSkeletonNodeNum_) {
@@ -108,6 +114,13 @@ void SkeletonGraph::BuildFromScratch(
   last_cell_count_ = exploring_cells.size();
   last_cell_set_.clear();
   last_cell_set_.insert(exploring_cells.begin(), exploring_cells.end());
+  last_merger_node_num_ = merger_graph.GetNodeNum();
+  last_merger_edge_num_ = 0;
+  for (const auto& edges : merger_graph.GetGraph()) {
+    last_merger_edge_num_ += static_cast<int>(edges.size());
+  }
+  last_merger_edge_num_ /= 2;
+  last_topology_signature_ = ComputeTopologySignature(grid_world, merger_graph, exploring_cells);
 
   // 阶段 2.4: 统计
   auto t_end = std::chrono::high_resolution_clock::now();
@@ -119,61 +132,85 @@ void SkeletonGraph::BuildFromScratch(
   stats_.edge_num = GetEdgeNum();
 }
 
-// 阶段 3.1: 为 cell 创建骨架节点（位置 = merger_graph 代表节点的实际位置）
-void SkeletonGraph::AddCellNode(grid_world_ns::GridWorld& grid_world,
+// 阶段 3.1 + 6.2: 为 cell 创建骨架节点。
+// 找不到有效 connected merger_graph 代表点时直接跳过，禁止回退到 cell 中心。
+bool SkeletonGraph::AddCellNode(grid_world_ns::GridWorld& grid_world,
                                  merger_graph_ns::MergerGraph& merger_graph,
                                  int cell_ind) {
-  if (cell_to_node_.find(cell_ind) != cell_to_node_.end()) return;  // 已存在
+  if (cell_to_node_.find(cell_ind) != cell_to_node_.end()) return true;
   auto status = grid_world.GetCellStatus_world(cell_ind);
   if (status != grid_world_ns::CellStatus::EXPLORING &&
       status != grid_world_ns::CellStatus::COVERED) {
-    return;
+    return false;
   }
-  // 阶段 3.1: 选取 merger_graph 代表节点
+
   int mg_node_ind = SelectRepresentativeMergerNode(grid_world, merger_graph, cell_ind);
-
-  Eigen::Vector3d node_pos;
-  if (mg_node_ind >= 0) {
-    // 用 merger_graph 节点的实际位置
-    geometry_msgs::msg::Point p = merger_graph.GetNodePosition(mg_node_ind);
-    node_pos = Eigen::Vector3d(p.x, p.y, p.z);
-  } else {
-    // 回退: 该 cell 内无 connected merger_graph 节点，用 cell 中心
-    //   这种 cell 会被 PruneLeafNodes 或查询失败时自然过滤掉
-    geometry_msgs::msg::Point p = grid_world.GetCellPosition(cell_ind);
-    node_pos = Eigen::Vector3d(p.x, p.y, p.z);
+  if (mg_node_ind < 0) {
+    return false;
   }
 
-  SkeletonNode node(cell_ind, node_pos, mg_node_ind);
+  geometry_msgs::msg::Point p = merger_graph.GetNodePosition(mg_node_ind);
+  if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z)) {
+    return false;
+  }
+  if (grid_world.GetCellInd(p.x, p.y, p.z) != cell_ind) {
+    return false;
+  }
+
+  SkeletonNode node(cell_ind, Eigen::Vector3d(p.x, p.y, p.z), mg_node_ind);
   int node_idx = nodes_.size();
   nodes_.push_back(node);
   graph_.push_back({});
   graph_set_.push_back({});
   edge_dist_.push_back({});
   cell_to_node_[cell_ind] = node_idx;
+  return true;
 }
 
-void SkeletonGraph::AddEdgesForCell(grid_world_ns::GridWorld& grid_world, int cell_ind) {
+bool SkeletonGraph::HasValidMergerConnection(
+    grid_world_ns::GridWorld& grid_world,
+    merger_graph_ns::MergerGraph& merger_graph,
+    int from_cell, int to_cell) {
+  std::vector<int> from_nodes = grid_world.GetCellMergerGraphNodeIndices(from_cell);
+  std::vector<int> to_nodes = grid_world.GetCellMergerGraphNodeIndices(to_cell);
+  const int node_num = merger_graph.GetNodeNum();
+  for (int from_mg : from_nodes) {
+    if (from_mg < 0 || from_mg >= node_num || !merger_graph.GetNodeIsConnected(from_mg)) continue;
+    geometry_msgs::msg::Point from_pos = merger_graph.GetNodePosition(from_mg);
+    if (!std::isfinite(from_pos.x) || !std::isfinite(from_pos.y) || !std::isfinite(from_pos.z)) continue;
+    if (grid_world.GetCellInd(from_pos.x, from_pos.y, from_pos.z) != from_cell) continue;
+    for (int to_mg : to_nodes) {
+      if (to_mg < 0 || to_mg >= node_num || !merger_graph.GetNodeIsConnected(to_mg)) continue;
+      geometry_msgs::msg::Point to_pos = merger_graph.GetNodePosition(to_mg);
+      if (!std::isfinite(to_pos.x) || !std::isfinite(to_pos.y) || !std::isfinite(to_pos.z)) continue;
+      if (grid_world.GetCellInd(to_pos.x, to_pos.y, to_pos.z) != to_cell) continue;
+      if (merger_graph.HasEdgeBetween(from_mg, to_mg)) return true;
+    }
+  }
+  return false;
+}
+
+void SkeletonGraph::AddEdgesForCell(grid_world_ns::GridWorld& grid_world,
+                                    merger_graph_ns::MergerGraph& merger_graph,
+                                    int cell_ind) {
   auto it = cell_to_node_.find(cell_ind);
   if (it == cell_to_node_.end()) return;
   int from_node = it->second;
 
-  std::vector<int> connected = grid_world.GetCellConnectedCellIndices(cell_ind);
+  // 阶段 6.1: 使用不会被每轮清空的长期 cell 连接，保证骨架边稳定保存。
+  std::vector<int> connected = grid_world.GetCellLongTermConnectedCellIndices(cell_ind);
   for (int neighbor_cell : connected) {
     auto nit = cell_to_node_.find(neighbor_cell);
     if (nit == cell_to_node_.end()) continue;
     int to_node = nit->second;
 
-    // Skip self-loops
     if (from_node == to_node) continue;
-    // 阶段 2.2: O(1) 去重检查
     if (graph_set_[from_node].count(to_node)) continue;
+    // 阶段 6.5: 长期 cell 连接仅作为候选，必须存在真实 merger_graph 跨 cell 边。
+    if (!HasValidMergerConnection(grid_world, merger_graph, cell_ind, neighbor_cell)) continue;
 
-    // Add edge (undirected)
-    //   阶段 3.1: 边权用两代表节点的实际位置（merger_graph 节点位置）的直线距离。
-    //   Floyd-Warshall/Dijkstra 会自动累加边权得到正确的最短路径距离，
-    //   因此这里用直线距离近似即可（节点位置已是 merger_graph 实际位置，比 cell 中心准确）。
     double dist = (nodes_[from_node].position_ - nodes_[to_node].position_).norm();
+    if (!std::isfinite(dist) || dist <= 0.0) continue;
     graph_[from_node].push_back(to_node);
     graph_[to_node].push_back(from_node);
     edge_dist_[from_node].push_back(dist);
@@ -181,83 +218,6 @@ void SkeletonGraph::AddEdgesForCell(grid_world_ns::GridWorld& grid_world, int ce
     graph_set_[from_node].insert(to_node);
     graph_set_[to_node].insert(from_node);
   }
-}
-
-// 阶段 3.2: 度数过滤骨架化
-//   移除度数 = 1 且其 cell 不是边界 cell（没有 UNSEEN 邻居）的叶子节点
-//   注意: 删除节点需要索引重排，这里采用"标记 + 重建"的简化方式
-void SkeletonGraph::PruneLeafNodes(grid_world_ns::GridWorld& grid_world) {
-  if (nodes_.empty()) return;
-
-  // 判断 cell 是否是边界 cell（有 UNSEEN 邻居，可能是探索前沿）
-  auto is_frontier_cell = [&](int cell_ind) -> bool {
-    std::vector<int> connected = grid_world.GetCellConnectedCellIndices(cell_ind);
-    // 同时检查 cell 邻接的 6-邻域是否有 UNSEEN
-    //   注意: GetCellConnectedCellIndices 返回的是已连接的 cell（可能不含 UNSEEN）
-    //   这里简化: 若 cell 的 connected 列表 < 6（6-邻域未满），视为边界
-    //   TODO(阶段3.2): 可改为检查实际邻居 cell 状态
-    return connected.size() < 6;
-  };
-
-  // 找出所有要删除的叶子节点
-  std::vector<int> to_remove;
-  for (size_t i = 0; i < nodes_.size(); i++) {
-    if (graph_[i].size() == 1) {  // 度数 = 1
-      int cell_ind = nodes_[i].cell_index_;
-      if (!is_frontier_cell(cell_ind)) {
-        to_remove.push_back(static_cast<int>(i));
-      }
-    }
-  }
-
-  if (to_remove.empty()) return;
-
-  // 简化实现: 重建 nodes/graph/edge_dist/cell_to_node，跳过 to_remove 中的节点
-  //   注意: 这种实现会改变节点索引，需要更新 cell_to_node_ 和 graph_set_
-  std::unordered_set<int> remove_set(to_remove.begin(), to_remove.end());
-
-  std::vector<SkeletonNode> new_nodes;
-  std::vector<std::vector<int>> new_graph;
-  std::vector<std::vector<double>> new_edge_dist;
-  std::unordered_map<int, int> new_cell_to_node;
-  std::vector<std::unordered_set<int>> new_graph_set;
-
-  // 旧索引 -> 新索引的映射
-  std::vector<int> old_to_new(nodes_.size(), -1);
-  int new_idx = 0;
-  for (size_t i = 0; i < nodes_.size(); i++) {
-    if (remove_set.count(static_cast<int>(i))) continue;
-    old_to_new[i] = new_idx;
-    new_nodes.push_back(nodes_[i]);
-    new_graph.push_back({});
-    new_edge_dist.push_back({});
-    new_graph_set.push_back({});
-    new_cell_to_node[nodes_[i].cell_index_] = new_idx;
-    new_idx++;
-  }
-
-  // 重建边（跳过涉及被删除节点的边）
-  for (size_t i = 0; i < nodes_.size(); i++) {
-    if (old_to_new[i] < 0) continue;
-    int new_i = old_to_new[i];
-    for (size_t j = 0; j < graph_[i].size(); j++) {
-      int old_neighbor = graph_[i][j];
-      if (old_to_new[old_neighbor] < 0) continue;
-      int new_neighbor = old_to_new[old_neighbor];
-      // 去重（双向边只添加一次）
-      if (new_graph_set[new_i].count(new_neighbor)) continue;
-      new_graph[new_i].push_back(new_neighbor);
-      new_edge_dist[new_i].push_back(edge_dist_[i][j]);
-      new_graph_set[new_i].insert(new_neighbor);
-    }
-  }
-
-  nodes_ = std::move(new_nodes);
-  graph_ = std::move(new_graph);
-  edge_dist_ = std::move(new_edge_dist);
-  graph_set_ = std::move(new_graph_set);
-  cell_to_node_ = std::move(new_cell_to_node);
-  // all_pairs_dist_ 会在 BuildFromScratch 后续步骤中重算
 }
 
 // 阶段 2.1 + 3.3b: 增量更新
@@ -287,7 +247,7 @@ bool SkeletonGraph::IncrementalUpdate(
     AddCellNode(grid_world, merger_graph, cell_ind);
   }
   for (int cell_ind : added_cells) {
-    AddEdgesForCell(grid_world, cell_ind);
+    AddEdgesForCell(grid_world, merger_graph, cell_ind);
   }
 
   // 阶段 3.2: 增量添加后不做度数过滤（成本高），留给下次全量重建
@@ -326,34 +286,71 @@ bool SkeletonGraph::IncrementalUpdate(
   return true;
 }
 
+std::size_t SkeletonGraph::ComputeTopologySignature(
+    grid_world_ns::GridWorld& grid_world,
+    merger_graph_ns::MergerGraph& merger_graph,
+    const std::vector<int>& active_cells) {
+  // 采用稳定的 hash-combine；对长期邻接排序，避免容器顺序导致无意义重建。
+  std::size_t seed = 1469598103934665603ULL;
+  auto combine = [&](std::size_t value) {
+    seed ^= value + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+  };
+  for (int cell_ind : active_cells) {
+    combine(std::hash<int>{}(cell_ind));
+    combine(std::hash<int>{}(SelectRepresentativeMergerNode(grid_world, merger_graph, cell_ind)));
+    std::vector<int> neighbors = grid_world.GetCellLongTermConnectedCellIndices(cell_ind);
+    std::sort(neighbors.begin(), neighbors.end());
+    neighbors.erase(std::unique(neighbors.begin(), neighbors.end()), neighbors.end());
+    for (int neighbor : neighbors) {
+      combine(std::hash<int>{}(neighbor));
+    }
+  }
+  // merger_graph 的边数量不变时仍可能发生删一条、加一条，因此将实际无向边组成纳入签名。
+  const auto& merger_adjacency = merger_graph.GetGraph();
+  for (size_t from = 0; from < merger_adjacency.size(); ++from) {
+    for (int to : merger_adjacency[from]) {
+      if (static_cast<int>(from) >= to) continue;
+      combine((std::hash<int>{}(static_cast<int>(from)) << 1) ^ std::hash<int>{}(to));
+    }
+  }
+  return seed;
+}
+
 void SkeletonGraph::UpdateFromGridWorld(
     grid_world_ns::GridWorld& grid_world,
     merger_graph_ns::MergerGraph& merger_graph) {
   if (!enabled_) return;
 
-  // 修复 1.4 + 阶段 2.1: 计算 added/removed 集合
   std::vector<int> cur_cells;
   grid_world.GetExploringAndCoveredCellIndicesWorld(cur_cells);
   std::unordered_set<int> cur_set(cur_cells.begin(), cur_cells.end());
 
   std::vector<int> added_cells, removed_cells;
   for (int c : cur_cells) {
-    if (last_cell_set_.find(c) == last_cell_set_.end()) {
-      added_cells.push_back(c);
-    }
+    if (last_cell_set_.find(c) == last_cell_set_.end()) added_cells.push_back(c);
   }
   for (int c : last_cell_set_) {
-    if (cur_set.find(c) == cur_set.end()) {
-      removed_cells.push_back(c);
-    }
+    if (cur_set.find(c) == cur_set.end()) removed_cells.push_back(c);
   }
 
-  bool changed = !added_cells.empty() || !removed_cells.empty();
+  int merger_node_num = merger_graph.GetNodeNum();
+  int merger_edge_num = 0;
+  const auto& merger_adjacency = merger_graph.GetGraph();
+  for (const auto& edges : merger_adjacency) {
+    merger_edge_num += static_cast<int>(edges.size());
+  }
+  merger_edge_num /= 2;
+  std::size_t topology_signature = ComputeTopologySignature(grid_world, merger_graph, cur_cells);
 
-  if (dirty_) {
+  const bool cell_set_changed = !added_cells.empty() || !removed_cells.empty();
+  const bool merger_changed = merger_node_num != last_merger_node_num_ ||
+                              merger_edge_num != last_merger_edge_num_;
+  const bool topology_changed = topology_signature != last_topology_signature_;
+
+  // 阶段 6.4: 正确性优先。cell、长期连接、merger 图或代表节点任一变化都全量重建，
+  // 避免只添加新 cell 而遗漏已有 cell 的新边/新代表节点。
+  if (dirty_ || cell_set_changed || merger_changed || topology_changed) {
     BuildFromScratch(grid_world, merger_graph);
-  } else if (changed) {
-    IncrementalUpdate(grid_world, merger_graph, added_cells, removed_cells);
   }
 }
 

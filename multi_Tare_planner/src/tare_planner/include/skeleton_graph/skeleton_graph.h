@@ -168,23 +168,32 @@ class SkeletonGraph {
                         merger_graph_ns::MergerGraph& merger_graph);
 
   // 阶段 2.1 + 3.3b: 增量更新辅助函数（需要 merger_graph 选取代表点）
-  void AddCellNode(grid_world_ns::GridWorld& grid_world,
+  bool AddCellNode(grid_world_ns::GridWorld& grid_world,
                    merger_graph_ns::MergerGraph& merger_graph,
                    int cell_ind);
-  void AddEdgesForCell(grid_world_ns::GridWorld& grid_world, int cell_ind);
+  void AddEdgesForCell(grid_world_ns::GridWorld& grid_world,
+                       merger_graph_ns::MergerGraph& merger_graph,
+                       int cell_ind);
   bool IncrementalUpdate(grid_world_ns::GridWorld& grid_world,
                          merger_graph_ns::MergerGraph& merger_graph,
                          const std::vector<int>& added_cells,
                          const std::vector<int>& removed_cells);
-
-  // 阶段 3.2: 骨架化——度数过滤，移除非边界叶子节点
-  void PruneLeafNodes(grid_world_ns::GridWorld& grid_world);
 
   // 阶段 3.1: 从 cell 的 GetMergerGraphNodeIndices() 中选最靠近 cell 中心的 connected 节点
   //   返回 merger_graph 节点索引；无合适节点返回 -1
   int SelectRepresentativeMergerNode(grid_world_ns::GridWorld& grid_world,
                                      merger_graph_ns::MergerGraph& merger_graph,
                                      int cell_ind);
+
+  // 阶段 6.4: 对长期 cell 连接和 cell 代表 merger 节点计算稳定签名。
+  std::size_t ComputeTopologySignature(grid_world_ns::GridWorld& grid_world,
+                                       merger_graph_ns::MergerGraph& merger_graph,
+                                       const std::vector<int>& active_cells);
+
+  // 阶段 6.5: 验证两个 cell 间至少存在一条真实 merger_graph 跨 cell 边。
+  bool HasValidMergerConnection(grid_world_ns::GridWorld& grid_world,
+                                merger_graph_ns::MergerGraph& merger_graph,
+                                int from_cell, int to_cell);
 
   // 阶段 2.3: 大图按需 Dijkstra
   //   从 source 跑 Dijkstra，返回到所有节点的距离向量；命中缓存则直接返回
@@ -223,6 +232,9 @@ class SkeletonGraph {
   // Build tracking
   int last_cell_count_ = 0;  // used to detect when full rebuild is needed
   std::unordered_set<int> last_cell_set_;  // 修复 1.4: 记录上次构建的 cell 集合，用于检测集合变化
+  int last_merger_node_num_ = -1;  // 阶段 6.4: merger_graph 节点数量快照
+  int last_merger_edge_num_ = -1;  // 阶段 6.4: merger_graph 边数量快照
+  std::size_t last_topology_signature_ = 0;  // 阶段 6.4: 长期连接 + 代表节点签名
 
   // 阶段 2: 可配置阈值
   int kMaxFloydWarshallNodeNum_ = 300;  // V 超过此值则改用 Dijkstra

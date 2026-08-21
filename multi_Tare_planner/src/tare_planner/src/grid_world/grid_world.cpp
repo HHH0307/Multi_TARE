@@ -51,7 +51,14 @@ void Cell::Reset()
 
 std::vector<int> GridWorld::GetCellConnectedCellIndices(int cell_ind)
 {
+  MY_ASSERT(subspaces_->InRange(cell_ind));
   return subspaces_->GetCell(cell_ind).GetConnectedCellIndices();
+}
+
+std::vector<int> GridWorld::GetCellLongTermConnectedCellIndices(int cell_ind)
+{
+  MY_ASSERT(subspaces_->InRange(cell_ind));
+  return subspaces_->GetCell(cell_ind).GetLongTermConnectedCellIndices();
 }
 
 GridWorld::GridWorld(rclcpp::Node::SharedPtr nh) : initialized_(false), use_keypose_graph_(false)

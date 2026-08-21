@@ -706,7 +706,8 @@ public:
     void GetExploringCellIndices(std::vector<int>& exploring_cell_indices);  //得到探索单元的ID（基于 subspaces_local_ 视角）
     void GetExploringCellIndicesWorld(std::vector<int>& exploring_cell_indices_world);  //得到探索单元的ID（基于 subspaces_world_ 视角，用于拓扑骨架图构建）
     void GetExploringAndCoveredCellIndicesWorld(std::vector<int>& cell_indices_world);  //得到 EXPLORING+COVERED 单元ID（world 视角，供骨架图使用）
-    std::vector<int> GetCellConnectedCellIndices(int cell_ind);  //获取单元的连接单元ID列表
+    std::vector<int> GetCellConnectedCellIndices(int cell_ind);  //获取单元的短期连接单元ID列表
+    std::vector<int> GetCellLongTermConnectedCellIndices(int cell_ind);  //获取单元的长期连接单元ID列表（供稳定骨架图使用）
     CellStatus GetCellStatus(int cell_ind);  //得到单元状态
     CellStatus GetCellStatus_world(int cell_ind);  //得到单元状态
     void SetCellStatus(int cell_ind, CellStatus status);  //设置单元状态

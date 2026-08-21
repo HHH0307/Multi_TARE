@@ -2575,14 +2575,12 @@ void SensorCoveragePlanner3D::execute_grid_merger_graph()
     if (skeleton_graph_ns::SkeletonGraph::enabled_)
     {
       skeleton_graph_->UpdateFromGridWorld(*grid_world_, *merger_graph_);
-      // 发布骨架图可视化
-      if (skeleton_graph_->GetNodeNum() > 0)
-      {
-        skeleton_graph_->GetMarker(skeleton_graph_node_marker_->marker_,
-                                    skeleton_graph_edge_marker_->marker_);
-        skeleton_graph_node_marker_->Publish();
-        skeleton_graph_edge_marker_->Publish();
-      }
+      // 阶段 6.6: 无论图是否为空都发布固定 id 的 Marker。
+      // 空 points 的 ADD Marker 会替换并清除 RViz 中上一帧残留的节点/边。
+      skeleton_graph_->GetMarker(skeleton_graph_node_marker_->marker_,
+                                  skeleton_graph_edge_marker_->marker_);
+      skeleton_graph_node_marker_->Publish();
+      skeleton_graph_edge_marker_->Publish();
       // 阶段 2.4: 节流输出骨架图性能统计（每 5 秒一次）
       {
         static rclcpp::Time last_stats_time = this->now();
