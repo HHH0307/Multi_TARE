@@ -23,9 +23,14 @@ Panels:
         - /robot_31/Local1
         - /robot_31/Local1/local_path1
         - /robot_3_Marker_boundary1
-        - /skeleton_graph_edge1
-        - /keleton_graph_node1
-      Splitter Ratio: 0.40265485644340515
+        - /robot_1_skeleton_graph_edge_marker1
+        - /robot_1_skeleton_graph_node_marker1
+        - /robot_2_skeleton_graph_edge_marker1
+        - /robot_2_skeleton_graph_edge_marker1/Namespaces1
+        - /robot_2_skeleton_graph_node_marker1
+        - /robot_3_skeleton_graph_edge_marker1
+        - /robot_3_skeleton_graph_node_marker1
+      Splitter Ratio: 0.3193277418613434
     Tree Height: 1225
   - Class: rviz_common/Selection
     Name: Selection
@@ -181,7 +186,7 @@ Visualization Manager:
               Enabled: true
               Name: grid_world_marker
               Namespaces:
-                "": true
+                {}
               Topic:
                 Depth: 5
                 Durability Policy: Volatile
@@ -367,7 +372,7 @@ Visualization Manager:
               Enabled: true
               Name: local_planning_horizon
               Namespaces:
-                "": true
+                {}
               Topic:
                 Depth: 5
                 Durability Policy: Volatile
@@ -461,7 +466,7 @@ Visualization Manager:
               Max Color: 255; 255; 255
               Max Intensity: 1
               Min Color: 0; 0; 0
-              Min Intensity: 0
+              Min Intensity: 1
               Name: lookahead_point_cloud
               Position Transformer: XYZ
               Selectable: true
@@ -653,7 +658,7 @@ Visualization Manager:
               Value: true
           Enabled: true
           Name: Local
-      Enabled: true
+      Enabled: false
       Name: robot_1
     - Class: rviz_common/Group
       Displays:
@@ -1070,7 +1075,7 @@ Visualization Manager:
               Max Color: 255; 255; 255
               Max Intensity: 1
               Min Color: 0; 0; 0
-              Min Intensity: 0
+              Min Intensity: 1
               Name: lookahead_point_cloud
               Position Transformer: XYZ
               Selectable: true
@@ -1262,7 +1267,7 @@ Visualization Manager:
               Value: true
           Enabled: true
           Name: Local
-      Enabled: true
+      Enabled: false
       Name: robot_2
     - Class: rviz_common/Group
       Displays:
@@ -1871,7 +1876,7 @@ Visualization Manager:
               Value: true
           Enabled: true
           Name: Local
-      Enabled: true
+      Enabled: false
       Name: robot_3
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -2000,7 +2005,7 @@ Visualization Manager:
       Value: false
     - Class: rviz_default_plugins/Marker
       Enabled: true
-      Name: skeleton_graph_edge
+      Name: robot_1_skeleton_graph_edge_marker
       Namespaces:
         "": true
       Topic:
@@ -2013,9 +2018,9 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/Marker
       Enabled: true
-      Name: keleton_graph_node
+      Name: robot_1_skeleton_graph_node_marker
       Namespaces:
-        {}
+        "": true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -2023,6 +2028,58 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /robot_1/sensor_coverage_planner/skeleton_graph_node_marker
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: robot_2_skeleton_graph_edge_marker
+      Namespaces:
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_2/sensor_coverage_planner/skeleton_graph_edge_marker
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: robot_2_skeleton_graph_node_marker
+      Namespaces:
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_2/sensor_coverage_planner/skeleton_graph_node_marker
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: robot_3_skeleton_graph_edge_marker
+      Namespaces:
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_3/sensor_coverage_planner/skeleton_graph_edge_marker
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: robot_3_skeleton_graph_node_marker
+      Namespaces:
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_3/sensor_coverage_planner/skeleton_graph_node_marker
       Value: true
   Enabled: true
   Global Options:
@@ -2039,7 +2096,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 110.82878875732422
+      Distance: 218.75636291503906
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -2065,7 +2122,7 @@ Window Geometry:
   Height: 1376
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000056d00000506fc0200000008fb0000001200530065006c0065006300740069006f006e0000000016000001320000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000506000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000016f00000506fc0200000006fb0000001a0072006f0062006f0074005f0031005f0049006d006100670065010000003d000001c90000002800fffffffb0000001a0072006f0062006f0074005f0032005f0049006d006100670065010000020c000000b30000002800fffffffb0000001a0072006f0062006f0074005f0033005f0049006d00610067006501000002c50000027e0000002800fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000016000003cc000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000a000000003efc0100000002fb0000000800540069006d0065000000000000000a00000002fb00fffffffb0000000800540069006d00650100000000000004500000000000000000000003180000050600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000003ba00000506fc0200000008fb0000001200530065006c0065006300740069006f006e0000000016000001320000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000506000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000016f00000506fc0200000006fb0000001a0072006f0062006f0074005f0031005f0049006d006100670065000000003d000005060000002800fffffffb0000001a0072006f0062006f0074005f0032005f0049006d00610067006500000003db000001680000002800fffffffb0000001a0072006f0062006f0074005f0033005f0049006d00610067006500000002c50000027e0000002800fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000016000003cc000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000a000000003efc0100000002fb0000000800540069006d0065000000000000000a00000002fb00fffffffb0000000800540069006d00650100000000000004500000000000000000000006400000050600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
